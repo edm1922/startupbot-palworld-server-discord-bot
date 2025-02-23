@@ -14,6 +14,7 @@
 ### Prerequisites
 - Python 3.8+
 - A running Palworld dedicated server
+- A Discord bot token from the Discord Developer Portal
 - Required dependencies: `nextcord`, `psutil`, `dotenv`
 
 ### Setup
