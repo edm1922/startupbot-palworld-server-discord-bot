@@ -7,6 +7,7 @@
 ✅ Automatic server restarts with configurable intervals  
 ✅ Real-time system RAM monitoring  
 ✅ Customizable settings via `.env` file  
+✅ Approval-based system for non-admin members to request server actions (*startupbot2.py*)
 
 ## Installation
 
@@ -34,13 +35,16 @@
    STATUS_CHANNEL_ID=channel-id-for-status  
    RAM_USAGE_CHANNEL_ID=channel-id-for-ram-monitoring  
    RESTART_INTERVAL=10800  # Default restart interval in seconds (3 hours)
+   AUTHORIZED_USER_ID=authorized-user-id # Only for startupbot2.py
    ```  
 4. Run the bot:
    ```sh
-   python bot.py  
+   python startupbot.py  # For admin use only
+   python startupbot2.py  # For approval-based system
    ```  
 
 ## Commands  
+### `startupbot.py` (Admin-Only)
 | Command | Description |
 |---------|-------------|
 | `!startserver` | Start the Palworld server |
@@ -49,6 +53,13 @@
 | `!setrestartinterval <hours>` | Set auto-restart interval (1-24 hours) |
 | `!togglerestart on/off` | Enable/disable automatic restarts |
 | `!bothelp` | Show available commands |
+
+### `startupbot2.py` (Approval-Based)
+| Command | Description |
+|---------|-------------|
+| `!requeststart` | Request to start the server (requires approval) |
+| `!requeststop` | Request to stop the server (requires approval) |
+| ✅ / ❌ | Authorized user reacts to approve/deny requests |
 
 ## Troubleshooting  
 - **Bot not responding?** Ensure it's running and has permission to read/send messages.  
