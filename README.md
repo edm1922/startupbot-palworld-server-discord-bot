@@ -1,4 +1,3 @@
-
 # StartupBot - Palworld Server Discord Bot
 
 🚀 A Nextcord-based Discord bot for managing a Palworld dedicated server remotely.
@@ -53,7 +52,7 @@
 
 ## Troubleshooting  
 - **Bot not responding?** Ensure it's running and has permission to read/send messages.  
-- **Server not starting?** Check the path to `haruhost_start_server.bat` in the script.  
+- **Server not starting?** Check the path to the batch/script file that starts your Palworld server.  
 - **RAM monitoring not working?** Ensure `psutil` is installed correctly.  
 
 ## Contributing  
