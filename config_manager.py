@@ -38,6 +38,7 @@ class ConfigManager:
             'ALLOWED_CHANNEL_ID': ('allowed_channel_id', int),
             'STATUS_CHANNEL_ID': ('status_channel_id', int),
             'RAM_USAGE_CHANNEL_ID': ('ram_usage_channel_id', int),
+            'PLAYER_MONITOR_CHANNEL_ID': ('player_monitor_channel_id', int),
             'RESTART_INTERVAL': ('restart_interval', int),
             'SERVER_DIRECTORY': ('server_directory', str),
             'STARTUP_SCRIPT': ('startup_script', str),

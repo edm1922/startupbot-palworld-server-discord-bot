@@ -9,8 +9,7 @@ from dotenv import load_dotenv
 
 # Import our new modules
 from config_manager import config
-from modals import ChannelConfigModal, ServerConfigModal, ScheduleConfigModal, RestApiConfigModal, ChatConfigModal
-from views import ServerControlView
+from views import ServerControlView, InteractiveConfigView
 from rest_api import rest_api
 
 # Load environment variables from .env file
@@ -22,7 +21,8 @@ GUILD_ID = config.get('guild_id', 0)
 ALLOWED_CHANNEL_ID = config.get('allowed_channel_id', 0)
 STATUS_CHANNEL_ID = config.get('status_channel_id', 0)
 RAM_USAGE_CHANNEL_ID = config.get('ram_usage_channel_id', 0)
-RESTART_INTERVAL = config.get('restart_interval', 10800)  # Default: 3 hours
+PLAYER_MONITOR_CHANNEL_ID = config.get('player_monitor_channel_id', 0)
+# RESTART_INTERVAL is now pulled dynamically from config in the auto_restart loop
 SERVER_DIRECTORY = config.get('server_directory', '')
 STARTUP_SCRIPT = config.get('startup_script', '')
 SHUTDOWN_TIME = config.get('shutdown_time', "05:00")
@@ -102,11 +102,12 @@ async def on_ready():
         print(f"❌ Failed to sync commands: {e}")
     
     asyncio.create_task(monitor_system_ram())
-    # asyncio.create_task(auto_restart())  # Start auto-restart (Removed per user request)
+    asyncio.create_task(auto_restart())  # Start auto-restart
     asyncio.create_task(scheduled_shutdown())
     asyncio.create_task(scheduled_startup())
     asyncio.create_task(reset_attempts())
     asyncio.create_task(tail_palguard_logs()) # Start Game -> Discord cross-chat
+    asyncio.create_task(monitor_players()) # Start Player Join/Leave notifications
 
 # @bot.event
 # async def on_interaction(interaction: nextcord.Interaction):
@@ -178,7 +179,8 @@ async def config_command(interaction: nextcord.Interaction):
             await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
         
-        await interaction.response.send_message("Choose a configuration section:", ephemeral=True, view=ConfigSelectView())
+        view = InteractiveConfigView(interaction.user.id)
+        await interaction.response.send_message(embed=view.get_embed(), view=view, ephemeral=True)
     except Exception as e:
         print(f"Error in config command: {e}")
         import traceback
@@ -189,47 +191,139 @@ async def config_command(interaction: nextcord.Interaction):
         except:
             pass
 
+@bot.slash_command(name="setup_channels", description="Configure bot channels by selecting them", guild_ids=[GUILD_ID])
+async def setup_channels(
+    interaction: nextcord.Interaction,
+    admin_channel: nextcord.TextChannel = nextcord.SlashOption(description="Channel for admin commands", required=False),
+    status_channel: nextcord.TextChannel = nextcord.SlashOption(description="Channel for server status (Online/Offline)", required=False),
+    ram_channel: nextcord.TextChannel = nextcord.SlashOption(description="Channel for RAM usage monitoring", required=False),
+    chat_channel: nextcord.TextChannel = nextcord.SlashOption(description="Channel for Game <-> Discord chat", required=False),
+    monitor_channel: nextcord.TextChannel = nextcord.SlashOption(description="Channel for Player Join/Leave notifications", required=False)
+):
+    # Check if user has permission
+    admin_id = config.get('admin_user_id', 0)
+    if interaction.user.id != admin_id and not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+        return
 
-class ConfigSelectView(nextcord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
+    changes = []
+    if admin_channel:
+        config.set('allowed_channel_id', admin_channel.id)
+        global ALLOWED_CHANNEL_ID
+        ALLOWED_CHANNEL_ID = admin_channel.id
+        changes.append(f"Admin Channel -> {admin_channel.mention}")
     
-    @nextcord.ui.button(label="Channel Config", style=nextcord.ButtonStyle.primary)
-    async def channel_config(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        modal = ChannelConfigModal()
-        await interaction.response.send_modal(modal)
+    if status_channel:
+        config.set('status_channel_id', status_channel.id)
+        global STATUS_CHANNEL_ID
+        STATUS_CHANNEL_ID = status_channel.id
+        changes.append(f"Status Channel -> {status_channel.mention}")
+
+    if ram_channel:
+        config.set('ram_usage_channel_id', ram_channel.id)
+        global RAM_USAGE_CHANNEL_ID
+        RAM_USAGE_CHANNEL_ID = ram_channel.id
+        changes.append(f"RAM Channel -> {ram_channel.mention}")
+
+    if chat_channel:
+        config.set('chat_channel_id', chat_channel.id)
+        changes.append(f"Chat Channel -> {chat_channel.mention}")
+
+    if monitor_channel:
+        config.set('player_monitor_channel_id', monitor_channel.id)
+        global PLAYER_MONITOR_CHANNEL_ID
+        PLAYER_MONITOR_CHANNEL_ID = monitor_channel.id
+        changes.append(f"Monitor Channel -> {monitor_channel.mention}")
+
+    if not changes:
+        await interaction.response.send_message("No changes specified.", ephemeral=True)
+        return
+
+    embed = nextcord.Embed(
+        title="Channels Updated",
+        description="\n".join(changes),
+        color=0x00FF00
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.slash_command(name="edit", description="Edit server configuration settings", guild_ids=[GUILD_ID])
+async def edit(
+    interaction: nextcord.Interaction,
+    server_dir: str = nextcord.SlashOption(description="Full path to server directory", required=False),
+    startup_script: str = nextcord.SlashOption(description="Name of the startup batch file", required=False),
+    shutdown_time: str = nextcord.SlashOption(description="Daily shutdown time (HH:MM)", required=False),
+    startup_time: str = nextcord.SlashOption(description="Daily startup time (HH:MM)", required=False),
+    api_endpoint: str = nextcord.SlashOption(description="REST API Endpoint (IP:Port)", required=False),
+    api_key: str = nextcord.SlashOption(description="REST API Key (Admin Password)", required=False),
+    log_dir: str = nextcord.SlashOption(description="PalGuard Logs directory path", required=False),
+    webhook_url: str = nextcord.SlashOption(description="Webhook URL for chat relay", required=False),
+    admin_user: nextcord.Member = nextcord.SlashOption(description="Set a specific bot administrator", required=False)
+):
+    # Check if user has permission
+    admin_id = config.get('admin_user_id', 0)
+    if interaction.user.id != admin_id and not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+        return
+
+    changes = []
+    if server_dir:
+        config.set('server_directory', server_dir)
+        global SERVER_DIRECTORY
+        SERVER_DIRECTORY = server_dir
+        changes.append(f"Server Directory: `{server_dir}`")
     
-    @nextcord.ui.button(label="Server Config", style=nextcord.ButtonStyle.primary)
-    async def server_config(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        modal = ServerConfigModal()
-        await interaction.response.send_modal(modal)
-    
-    @nextcord.ui.button(label="Schedule Config", style=nextcord.ButtonStyle.primary)
-    async def schedule_config(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        modal = ScheduleConfigModal()
-        await interaction.response.send_modal(modal)
-    
-    @nextcord.ui.button(label="REST API Config", style=nextcord.ButtonStyle.primary)
-    async def rest_api_config(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        modal = RestApiConfigModal()
-        await interaction.response.send_modal(modal)
-    
-    @nextcord.ui.button(label="Chat Config", style=nextcord.ButtonStyle.secondary)
-    async def chat_config(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        modal = ChatConfigModal()
-        await interaction.response.send_modal(modal)
-    
-    @nextcord.ui.button(label="View Current Config", style=nextcord.ButtonStyle.success)
-    async def view_config(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        config_data = config.get_all()
-        config_str = "\n".join([f"**{k}:** {v}" for k, v in config_data.items()])
-        
-        embed = nextcord.Embed(
-            title="Current Configuration",
-            description=config_str,
-            color=0x00ADD8
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+    if startup_script:
+        config.set('startup_script', startup_script)
+        global STARTUP_SCRIPT
+        STARTUP_SCRIPT = startup_script
+        changes.append(f"Startup Script: `{startup_script}`")
+
+    if shutdown_time:
+        config.set('shutdown_time', shutdown_time)
+        global SHUTDOWN_TIME
+        SHUTDOWN_TIME = shutdown_time
+        changes.append(f"Shutdown Time: `{shutdown_time}`")
+
+    if startup_time:
+        config.set('startup_time', startup_time)
+        global STARTUP_TIME
+        STARTUP_TIME = startup_time
+        changes.append(f"Startup Time: `{startup_time}`")
+
+    if api_endpoint:
+        config.set('rest_api_endpoint', api_endpoint)
+        changes.append(f"API Endpoint: `{api_endpoint}`")
+
+    if api_key:
+        config.set('rest_api_key', api_key)
+        changes.append(f"API Key: `********`")
+
+    if log_dir:
+        config.set('log_directory', log_dir)
+        changes.append(f"Log Directory: `{log_dir}`")
+
+    if webhook_url:
+        config.set('chat_webhook_url', webhook_url)
+        changes.append(f"Webhook URL: `Updated`")
+
+    if admin_user:
+        config.set('admin_user_id', admin_user.id)
+        global ADMIN_ID
+        ADMIN_ID = admin_user.id
+        changes.append(f"Admin User: {admin_user.mention}")
+
+    if not changes:
+        await interaction.response.send_message("No changes specified.", ephemeral=True)
+        return
+
+    embed = nextcord.Embed(
+        title="Configuration Updated",
+        description="\n".join(changes),
+        color=0x00FF00
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 
 # Slash command to show player list using REST API
 @bot.slash_command(description="Show current players on the server", guild_ids=[GUILD_ID])
@@ -334,6 +428,8 @@ async def help_command(interaction: nextcord.Interaction):
         "**/palhelp** - Show this help message\n"
         "**/server_controls** - Show server control panel with buttons (Admin only)\n"
         "**/config** - Open configuration modals (Admin only)\n"
+        "**/setup_channels** - Select channels for various bot features (Admin only)\n"
+        "**/edit** - Edit server settings directly (Admin only)\n"
         "**/players** - Show current players online\n"
         "**/serverinfo** - Show detailed server information\n"
         "**/saveworld** - Manually save the world state (Admin only)"
@@ -436,7 +532,113 @@ async def monitor_system_ram():
             await ram_channel.send(f"💻 **System RAM Usage:** {used_memory:.2f} GB / {total_memory:.2f} GB ({memory_percent}% used)")
         await asyncio.sleep(600)
 
-# auto_restart function removed per user request
+async def monitor_players():
+    """Monitors player join/leave events via REST API"""
+    last_players = set()
+    first_run = True
+    
+    while True:
+        try:
+            if not rest_api.is_configured():
+                await asyncio.sleep(30)
+                continue
+                
+            player_data = await rest_api.get_player_list()
+            if player_data is not None:
+                players = player_data.get('players', [])
+                current_players = {p.get('userId'): p.get('name') for p in players if p.get('userId')}
+                
+                # Check for joins and leaves
+                if not first_run:
+                    # Joined
+                    for uid, name in current_players.items():
+                        if uid not in last_players:
+                            await send_player_event(name, "joined")
+                    
+                    # Left
+                    for uid, name in last_players.items():
+                        if uid not in current_players:
+                            await send_player_event(name, "left")
+                
+                last_players = current_players
+                first_run = False
+        except Exception as e:
+            print(f"Error in monitor_players: {e}")
+            
+        await asyncio.sleep(15) # Check every 15 seconds
+
+async def send_player_event(name, event_type):
+    """Sends join/leave notification to the designated channel"""
+    channel_id = config.get('player_monitor_channel_id', 0)
+    channel = bot.get_channel(channel_id)
+    
+    if channel:
+        color = 0x00FF00 if event_type == "joined" else 0xFF0000
+        icon = "📥" if event_type == "joined" else "📤"
+        
+        embed = nextcord.Embed(
+            description=f"{icon} **{name}** has {event_type} the server.",
+            color=color,
+            timestamp=datetime.datetime.utcnow()
+        )
+        await channel.send(embed=embed)
+
+async def auto_restart():
+    """Periodically restarts the server based on the configured interval"""
+    while True:
+        # Get latest interval from config in case it was changed
+        interval = config.get('restart_interval', 10800)
+        await asyncio.sleep(interval)
+        
+        global restart_enabled
+        if restart_enabled:
+            # Check if server is actually running first
+            # We don't want to restart if it's already offline (e.g. during scheduled downtime)
+            if not is_server_running():
+                print("⏭️ Auto-Restart Skipped: Server is currently offline.")
+                continue
+
+            print(f"⏰ Auto-Restart Triggered (Interval: {interval}s)")
+            
+            # 📢 Pre-restart Announcements
+            # Get announcement times from config (comma-separated minutes, e.g., "30,10,5,1")
+            announcements_str = config.get('restart_announcements', '30,10,5,1')
+            try:
+                # Convert to sorted list of seconds in descending order
+                announce_times = sorted([int(m.strip()) * 60 for m in announcements_str.split(',') if m.strip().isdigit()], reverse=True)
+            except:
+                announce_times = [1800, 600, 300, 60] # Default fallback
+
+            # Notify admin channel about the start of the countdown
+            allowed_channel_id = config.get('allowed_channel_id', 0)
+            channel = bot.get_channel(allowed_channel_id)
+            if channel:
+                await channel.send(f"🔄 **Auto-Restart:** Countdown started. Server will restart in {max(announce_times)//60} minutes.")
+
+            # Run countdown
+            announce_times.sort(reverse=True)
+            
+            for i, wait_sec in enumerate(announce_times):
+                if rest_api.is_configured():
+                    mins = wait_sec // 60
+                    msg = f"⚠️ SERVER RESTART IN {mins} MINUTE{'S' if mins != 1 else ''} FOR MAINTENANCE"
+                    if wait_sec < 60:
+                        msg = f"⚠️ SERVER RESTART IN {wait_sec} SECONDS"
+                    await rest_api.broadcast_message(msg)
+                
+                # Sleep until the next announcement
+                if i < len(announce_times) - 1:
+                    sleep_duration = wait_sec - announce_times[i+1]
+                    if sleep_duration > 0:
+                        await asyncio.sleep(sleep_duration)
+                else:
+                    # Last announcement, sleep the remaining time
+                    await asyncio.sleep(announce_times[-1])
+            
+            await stop_server()
+            await asyncio.sleep(10)  # Wait for processes to fully terminate
+            await start_server()
+
 
 async def scheduled_shutdown():
     last_triggered_date = None
