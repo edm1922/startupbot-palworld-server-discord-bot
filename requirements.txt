@@ -1,0 +1,4 @@
+nextcord
+python-dotenv
+psutil
+aiohttp
