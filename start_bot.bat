@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 title Discord Bot - StartupBot
 echo Starting StartupBot...
 :loop

@@ -11,23 +11,17 @@ from dotenv import load_dotenv
 from config_manager import config
 from views import ServerControlView, InteractiveConfigView
 from rest_api import rest_api
+from server_utils import is_server_running, start_server, stop_server, restart_server
 
-# Load environment variables from .env file
-load_dotenv()
+# Environment variables are loaded automatically by config_manager
 
 # Retrieve configuration values from our new config manager
 TOKEN = config.get_discord_token()
 GUILD_ID = config.get('guild_id', 0)
-ALLOWED_CHANNEL_ID = config.get('allowed_channel_id', 0)
-STATUS_CHANNEL_ID = config.get('status_channel_id', 0)
-RAM_USAGE_CHANNEL_ID = config.get('ram_usage_channel_id', 0)
-PLAYER_MONITOR_CHANNEL_ID = config.get('player_monitor_channel_id', 0)
-# RESTART_INTERVAL is now pulled dynamically from config in the auto_restart loop
+# We will use config.get directly in functions to ensure we always have the latest values
+# without needing to restart the bot when settings are changed.
 SERVER_DIRECTORY = config.get('server_directory', '')
 STARTUP_SCRIPT = config.get('startup_script', '')
-SHUTDOWN_TIME = config.get('shutdown_time', "05:00")
-STARTUP_TIME = config.get('startup_time', "10:00")
-ADMIN_ID = config.get('admin_user_id', 0)  # No default hardcoded ID
 
 if not TOKEN:
     raise ValueError("❌ DISCORD_BOT_TOKEN not found! Check your .env file.")
@@ -48,11 +42,14 @@ bot = commands.Bot(
 server_starter = None
 restart_task = None
 restart_enabled = True
+next_restart_time = None  # Global to track when the next restart happens
 attempts = {"start": {}, "stop": {}}  # Track attempts per user
 MAX_ATTEMPTS = 3
 ATTEMPT_RESET_TIME = 86400  # 24 hours in seconds
 # Global variable for server control view
 server_control_view = None
+# Track task objects to prevent duplicates on reconnect
+running_tasks = {}
 
 import socket
 import sys
@@ -64,11 +61,12 @@ def enforce_single_instance():
     try:
         # Create a socket with a unique port
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 64209))  # Arbitrary high port
+        s.bind(('127.0.0.1', 64210))  # Arbitrary high port
         # Keep the socket open until program exit
         return s
-    except socket.error:
-        print("\n\n⛔ FATAL ERROR: ANOTHER INSTANCE OF THE BOT IS ALREADY RUNNING!")
+    except socket.error as e:
+        print(f"\n\n[FATAL ERROR]: Instance check failed: {e}")
+        print("[FATAL ERROR]: ANOTHER INSTANCE OF THE BOT IS ALREADY RUNNING!")
         print("Please close all other Python windows/terminals and try again.")
         print("Exiting in 5 seconds...")
         import time
@@ -76,38 +74,55 @@ def enforce_single_instance():
         sys.exit(1)
 
 # Hold the socket object globally so it doesn't get garbage collected/closed
-instance_lock = enforce_single_instance()
+instance_lock = None
 
 @bot.event
 async def on_ready():
-    print(f'✅ Logged in as {bot.user}')
-    print(f'✅ Connected to server: {GUILD_ID}')
-    print(f'✅ Bot connected and ready!')
-    # Initialize and add the persistent view for server controls
+    print(f'[READY] Logged in as {bot.user}')
+    print(f'[INFO] Connected to server: {GUILD_ID}')
+    print(f'[INFO] Bot connected and ready!')
+    # Initialize and add the persistent view for server controls only if not already done
     global server_control_view
-    server_control_view = ServerControlView()
-    bot.add_view(server_control_view)
+    if server_control_view is None:
+        print("[INIT] Initializing persistent ServerControlView...")
+        server_control_view = ServerControlView()
+        bot.add_view(server_control_view)
+    else:
+        print("[INFO] ServerControlView already initialized, skipping.")
     
-    print(f'✅ Commands will be available in guild: {GUILD_ID}')
+    print(f'[READY] Commands will be available in guild: {GUILD_ID}')
     
     # Set bot status
     await bot.change_presence(activity=nextcord.Game(name="/palhelp"))
     
     # Force sync commands
     try:
-        print("⏳ Syncing commands...")
+        print("[SYNC] Syncing commands...")
         await bot.sync_all_application_commands()
-        print('✅ All slash commands synced successfully!')
+        print('[SUCCESS] All slash commands synced successfully!')
     except Exception as e:
-        print(f"❌ Failed to sync commands: {e}")
+        print(f"[ERROR] Failed to sync commands: {e}")
     
     asyncio.create_task(monitor_system_ram())
-    asyncio.create_task(auto_restart())  # Start auto-restart
-    asyncio.create_task(scheduled_shutdown())
-    asyncio.create_task(scheduled_startup())
-    asyncio.create_task(reset_attempts())
-    asyncio.create_task(tail_palguard_logs()) # Start Game -> Discord cross-chat
-    asyncio.create_task(monitor_players()) # Start Player Join/Leave notifications
+    
+    # Start tasks only if not already running
+    if 'auto_restart' not in running_tasks or running_tasks['auto_restart'].done():
+        running_tasks['auto_restart'] = asyncio.create_task(auto_restart())
+    
+    if 'scheduled_shutdown' not in running_tasks or running_tasks['scheduled_shutdown'].done():
+        running_tasks['scheduled_shutdown'] = asyncio.create_task(scheduled_shutdown())
+        
+    if 'scheduled_startup' not in running_tasks or running_tasks['scheduled_startup'].done():
+        running_tasks['scheduled_startup'] = asyncio.create_task(scheduled_startup())
+        
+    if 'reset_attempts' not in running_tasks or running_tasks['reset_attempts'].done():
+        running_tasks['reset_attempts'] = asyncio.create_task(reset_attempts())
+        
+    if 'tail_palguard_logs' not in running_tasks or running_tasks['tail_palguard_logs'].done():
+        running_tasks['tail_palguard_logs'] = asyncio.create_task(tail_palguard_logs())
+        
+    if 'monitor_players' not in running_tasks or running_tasks['monitor_players'].done():
+        running_tasks['monitor_players'] = asyncio.create_task(monitor_players())
 
 # @bot.event
 # async def on_interaction(interaction: nextcord.Interaction):
@@ -209,20 +224,14 @@ async def setup_channels(
     changes = []
     if admin_channel:
         config.set('allowed_channel_id', admin_channel.id)
-        global ALLOWED_CHANNEL_ID
-        ALLOWED_CHANNEL_ID = admin_channel.id
         changes.append(f"Admin Channel -> {admin_channel.mention}")
     
     if status_channel:
         config.set('status_channel_id', status_channel.id)
-        global STATUS_CHANNEL_ID
-        STATUS_CHANNEL_ID = status_channel.id
         changes.append(f"Status Channel -> {status_channel.mention}")
 
     if ram_channel:
         config.set('ram_usage_channel_id', ram_channel.id)
-        global RAM_USAGE_CHANNEL_ID
-        RAM_USAGE_CHANNEL_ID = ram_channel.id
         changes.append(f"RAM Channel -> {ram_channel.mention}")
 
     if chat_channel:
@@ -231,8 +240,6 @@ async def setup_channels(
 
     if monitor_channel:
         config.set('player_monitor_channel_id', monitor_channel.id)
-        global PLAYER_MONITOR_CHANNEL_ID
-        PLAYER_MONITOR_CHANNEL_ID = monitor_channel.id
         changes.append(f"Monitor Channel -> {monitor_channel.mention}")
 
     if not changes:
@@ -268,26 +275,18 @@ async def edit(
     changes = []
     if server_dir:
         config.set('server_directory', server_dir)
-        global SERVER_DIRECTORY
-        SERVER_DIRECTORY = server_dir
         changes.append(f"Server Directory: `{server_dir}`")
     
     if startup_script:
         config.set('startup_script', startup_script)
-        global STARTUP_SCRIPT
-        STARTUP_SCRIPT = startup_script
         changes.append(f"Startup Script: `{startup_script}`")
 
     if shutdown_time:
         config.set('shutdown_time', shutdown_time)
-        global SHUTDOWN_TIME
-        SHUTDOWN_TIME = shutdown_time
         changes.append(f"Shutdown Time: `{shutdown_time}`")
 
     if startup_time:
         config.set('startup_time', startup_time)
-        global STARTUP_TIME
-        STARTUP_TIME = startup_time
         changes.append(f"Startup Time: `{startup_time}`")
 
     if api_endpoint:
@@ -308,8 +307,6 @@ async def edit(
 
     if admin_user:
         config.set('admin_user_id', admin_user.id)
-        global ADMIN_ID
-        ADMIN_ID = admin_user.id
         changes.append(f"Admin User: {admin_user.mention}")
 
     if not changes:
@@ -354,11 +351,14 @@ async def players(interaction: nextcord.Interaction):
                 color=0xFFFF00
             )
     else:
+        error_msg = rest_api.get_last_error()
         embed = nextcord.Embed(
             title="Player List Error",
-            description="Could not retrieve player list from server.",
+            description=f"❌ **Failed to fetch players:**\n{error_msg}",
             color=0xFF0000
         )
+        if "Connection Failed" in error_msg:
+             embed.set_footer(text="Tip: If the bot is on the same PC as the server, try using 127.0.0.1 as the endpoint.")
     
     await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -384,9 +384,10 @@ async def serverinfo(interaction: nextcord.Interaction):
         for key, value in server_data.items():
             embed.add_field(name=key.title(), value=str(value), inline=True)
     else:
+        error_msg = rest_api.get_last_error()
         embed = nextcord.Embed(
             title="Server Info Error",
-            description="Could not retrieve server information from API.",
+            description=f"❌ **Failed to fetch server info:**\n{error_msg}",
             color=0xFF0000
         )
     
@@ -414,6 +415,46 @@ async def saveworld(interaction: nextcord.Interaction):
     else:
         await interaction.response.send_message("❌ Failed to send world save command to server.", ephemeral=True)
 
+# Slash command to check next restart
+@bot.slash_command(description="Check how much time is left until the next auto-restart", guild_ids=[GUILD_ID])
+async def nextrestart(interaction: nextcord.Interaction):
+    global next_restart_time
+    
+    if not config.get('auto_restart_enabled', True):
+        await interaction.response.send_message("ℹ️ Auto-restart is currently **disabled** in configuration.", ephemeral=True)
+        return
+        
+    if next_restart_time is None:
+        await interaction.response.send_message("⏳ Next restart time has not been calculated yet. The cycle might be starting...", ephemeral=True)
+        return
+        
+    now = datetime.datetime.now()
+    if next_restart_time <= now:
+        await interaction.response.send_message("🔄 Restart is happening **right now** or very soon!", ephemeral=True)
+        return
+        
+    diff = next_restart_time - now
+    hours, remainder = divmod(int(diff.total_seconds()), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    
+    time_str = ""
+    if hours > 0: time_str += f"{hours}h "
+    if minutes > 0: time_str += f"{minutes}m "
+    time_str += f"{seconds}s"
+    
+    embed = nextcord.Embed(
+        title="⏰ Next Auto-Restart",
+        description=f"The server is scheduled to restart in **{time_str.strip()}**.",
+        color=0xFEE75C
+    )
+    embed.add_field(name="Scheduled Time", value=f"<t:{int(next_restart_time.timestamp())}:T> (Local Time)", inline=False)
+    
+    # Add status info
+    if not is_server_running():
+        embed.set_footer(text="⚠️ Note: Server is currently offline. Restart may be skipped.")
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
 # Slash command for help
 @bot.slash_command(name="palhelp", description="List down all available commands", guild_ids=[GUILD_ID])
 async def help_command(interaction: nextcord.Interaction):
@@ -432,7 +473,8 @@ async def help_command(interaction: nextcord.Interaction):
         "**/edit** - Edit server settings directly (Admin only)\n"
         "**/players** - Show current players online\n"
         "**/serverinfo** - Show detailed server information\n"
-        "**/saveworld** - Manually save the world state (Admin only)"
+        "**/saveworld** - Manually save the world state (Admin only)\n"
+        "**/nextrestart** - See time remaining until next auto-restart"
     )
     embed.add_field(name="🚀 Slash Commands", value=slash_cmds, inline=False)
     
@@ -461,7 +503,7 @@ async def stopserver(ctx):
         if user_attempts >= MAX_ATTEMPTS:
             return await ctx.send("❌ You have reached the maximum attempts for today.")
         attempts["stop"][ctx.author.id] = user_attempts + 1
-    await stop_server()
+    await stop_server(bot)
     await ctx.send(f"✅ Server shutdown initiated. (Attempts left: {MAX_ATTEMPTS - attempts['stop'][ctx.author.id]}/{MAX_ATTEMPTS})")
 
 @bot.command(name="startserver")
@@ -479,39 +521,13 @@ async def startserver(ctx):
         attempts["start"][ctx.author.id] = user_attempts + 1
     if is_server_running():
         return await ctx.send("✅ Server is already running!")
-    await start_server()
+    await start_server(bot)
     await ctx.send(f"✅ Server startup initiated. (Attempts left: {MAX_ATTEMPTS - attempts['start'][ctx.author.id]}/{MAX_ATTEMPTS})")
 
 def is_allowed_channel(ctx):
-    return ctx.channel and ctx.channel.id == ALLOWED_CHANNEL_ID
+    allowed_id = config.get('allowed_channel_id', 0)
+    return ctx.channel and ctx.channel.id == allowed_id
 
-def is_server_running():
-    server_directory = config.get('server_directory')
-    startup_script = config.get('startup_script')
-    
-    # Normalize path for comparison
-    if server_directory:
-        server_directory = os.path.normpath(server_directory.lower())
-
-    for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cwd']):
-        try:
-            # Check CWD (Current Working Directory)
-            try:
-                proc_cwd = os.path.normpath(proc.cwd().lower()) if proc.cwd() else ""
-                if server_directory and server_directory in proc_cwd:
-                     return True
-            except (psutil.AccessDenied, FileNotFoundError):
-                pass
-            
-            # Check cmdline for startup script
-            if proc.info['cmdline'] and startup_script:
-                cmdline = " ".join(proc.info['cmdline']).lower()
-                if startup_script.lower() in cmdline:
-                    return True
-
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
-    return False
 
 async def reset_attempts():
     while True:
@@ -542,7 +558,17 @@ async def monitor_players():
             if not rest_api.is_configured():
                 await asyncio.sleep(30)
                 continue
-                
+            
+            # Skip check if server is offline to avoid console spam
+            if not is_server_running():
+                # Clear state so we can detect joins immediately when it comes back up
+                if last_players:
+                    print("📡 Server offline: Clearing player monitoring state.")
+                    last_players = set()
+                first_run = True
+                await asyncio.sleep(15)
+                continue
+
             player_data = await rest_api.get_player_list()
             if player_data is not None:
                 players = player_data.get('players', [])
@@ -579,29 +605,18 @@ async def send_player_event(name, event_type):
         embed = nextcord.Embed(
             description=f"{icon} **{name}** has {event_type} the server.",
             color=color,
-            timestamp=datetime.datetime.utcnow()
+            timestamp=nextcord.utils.utcnow()
         )
         await channel.send(embed=embed)
 
 async def auto_restart():
     """Periodically restarts the server based on the configured interval"""
     while True:
-        # Get latest interval from config in case it was changed
-        interval = config.get('restart_interval', 10800)
-        await asyncio.sleep(interval)
-        
-        global restart_enabled
-        if restart_enabled:
-            # Check if server is actually running first
-            # We don't want to restart if it's already offline (e.g. during scheduled downtime)
-            if not is_server_running():
-                print("⏭️ Auto-Restart Skipped: Server is currently offline.")
-                continue
-
-            print(f"⏰ Auto-Restart Triggered (Interval: {interval}s)")
+        try:
+            # Get latest interval from config
+            interval = config.get('restart_interval', 10800)
             
             # 📢 Pre-restart Announcements
-            # Get announcement times from config (comma-separated minutes, e.g., "30,10,5,1")
             announcements_str = config.get('restart_announcements', '30,10,5,1')
             try:
                 # Convert to sorted list of seconds in descending order
@@ -609,117 +624,149 @@ async def auto_restart():
             except:
                 announce_times = [1800, 600, 300, 60] # Default fallback
 
-            # Notify admin channel about the start of the countdown
-            allowed_channel_id = config.get('allowed_channel_id', 0)
-            channel = bot.get_channel(allowed_channel_id)
-            if channel:
-                await channel.send(f"🔄 **Auto-Restart:** Countdown started. Server will restart in {max(announce_times)//60} minutes.")
+            # Calculate actual sleep time (interval - max countdown)
+            # This ensures the total cycle matches the interval
+            countdown_duration = max(announce_times) if announce_times else 0
+            initial_sleep = max(0, interval - countdown_duration)
+            
+            print(f"🚥 Auto-Restart Cycle: Sleeping {initial_sleep}s, then {countdown_duration}s countdown.")
+            
+            # Update the global next_restart_time for users to see
+            global next_restart_time
+            next_restart_time = datetime.datetime.now() + datetime.timedelta(seconds=initial_sleep + countdown_duration)
+            
+            await asyncio.sleep(initial_sleep)
+            
+            global restart_enabled
+            if not config.get('auto_restart_enabled', True) or not restart_enabled:
+                print("⏭️ Auto-Restart Skipped: Feature is disabled in configuration.")
+                await asyncio.sleep(60) # Wait a bit before checking again
+                continue
 
-            # Run countdown
-            announce_times.sort(reverse=True)
+            # Check if server is actually running first
+            if not is_server_running():
+                print("⏭️ Auto-Restart Skipped: Server is currently offline.")
+                await asyncio.sleep(60)
+                continue
+
+            print(f"⏰ Auto-Restart Threshold Reached. Starting countdown.")
             
-            for i, wait_sec in enumerate(announce_times):
-                if rest_api.is_configured():
-                    mins = wait_sec // 60
-                    msg = f"⚠️ SERVER RESTART IN {mins} MINUTE{'S' if mins != 1 else ''} FOR MAINTENANCE"
-                    if wait_sec < 60:
-                        msg = f"⚠️ SERVER RESTART IN {wait_sec} SECONDS"
-                    await rest_api.broadcast_message(msg)
-                
-                # Sleep until the next announcement
-                if i < len(announce_times) - 1:
-                    sleep_duration = wait_sec - announce_times[i+1]
-                    if sleep_duration > 0:
-                        await asyncio.sleep(sleep_duration)
-                else:
-                    # Last announcement, sleep the remaining time
-                    await asyncio.sleep(announce_times[-1])
+            # Notify admin channel about the start of the countdown
+            if announce_times:
+                allowed_channel_id = config.get('allowed_channel_id', 0)
+                channel = bot.get_channel(allowed_channel_id)
+                if channel:
+                    await channel.send(f"🔄 **Auto-Restart:** Countdown started. Server will restart in {max(announce_times)//60} minutes.")
+
+                # Run countdown
+                for i, wait_sec in enumerate(announce_times):
+                    if rest_api.is_configured():
+                        mins = wait_sec // 60
+                        msg = f"⚠️ SERVER RESTART IN {mins} MINUTE{'S' if mins != 1 else ''} FOR MAINTENANCE"
+                        if wait_sec < 60:
+                            msg = f"⚠️ SERVER RESTART IN {wait_sec} SECONDS"
+                        await rest_api.broadcast_message(msg)
+                    
+                    # Sleep until the next announcement
+                    if i < len(announce_times) - 1:
+                        sleep_duration = wait_sec - announce_times[i+1]
+                        if sleep_duration > 0:
+                            await asyncio.sleep(sleep_duration)
+                    else:
+                        # Last announcement, sleep the remaining time
+                        await asyncio.sleep(announce_times[-1])
             
-            await stop_server()
-            await asyncio.sleep(10)  # Wait for processes to fully terminate
-            await start_server()
+            # Perform the restart
+            await restart_server(bot, graceful=True)
+            
+        except Exception as e:
+            print(f"❌ Error in auto_restart task: {e}")
+            import traceback
+            traceback.print_exc()
+            await asyncio.sleep(60) # Prevent tight loop on crash
 
 
 async def scheduled_shutdown():
+    """Daily server shutdown at a specific time."""
     last_triggered_date = None
     while True:
-        now = datetime.datetime.now()
-        shutdown_str = config.get('shutdown_time', '05:00')
-        
         try:
+            now = datetime.datetime.now()
+            shutdown_str = config.get('shutdown_time', '05:00')
+            
+            # Simple format validation
+            if ':' not in shutdown_str:
+                await asyncio.sleep(60)
+                continue
+                
             h, m = map(int, shutdown_str.split(':'))
+            
             # Check if it's currently the target time and we haven't triggered today
             if now.hour == h and now.minute == m and last_triggered_date != now.date():
-                print(f"⏰ Scheduled Shutdown Triggered: {shutdown_str}")
-                await stop_server()
-                last_triggered_date = now.date()
+                if is_server_running():
+                    print(f"⏰ Scheduled Shutdown Triggered: {shutdown_str}")
+                    
+                    # Notify admin channel
+                    admin_channel_id = config.get('allowed_channel_id', 0)
+                    admin_channel = bot.get_channel(admin_channel_id)
+                    if admin_channel:
+                        await admin_channel.send(f"🕒 **Scheduled Shutdown:** Initiating shutdown process ({shutdown_str})...")
+                    
+                    # Use the improved stop_server which now handles graceful shutdown 
+                    # organically if REST API is configured, then falls back to force stop.
+                    if rest_api.is_configured():
+                        await rest_api.broadcast_message("⚠️ DAILY SCHEDULED SHUTDOWN IN 10 SECONDS")
+                        await asyncio.sleep(10)
+
+                    await stop_server(bot, graceful=True)
+                    last_triggered_date = now.date()
+                else:
+                    # Server already offline, just mark as triggered for today
+                    last_triggered_date = now.date()
+                    print(f"⏰ Scheduled Shutdown Skipped: Server already offline ({shutdown_str})")
+                    
         except Exception as e:
             print(f"Error in scheduled_shutdown: {e}")
             
-        await asyncio.sleep(30) # Check every 30 seconds
+        await asyncio.sleep(1) # Check every second for precision
 
 async def scheduled_startup():
+    """Daily server startup at a specific time."""
     last_triggered_date = None
     while True:
-        now = datetime.datetime.now()
-        startup_str = config.get('startup_time', '10:00')
-        
         try:
+            now = datetime.datetime.now()
+            startup_str = config.get('startup_time', '10:00')
+            
+            if ':' not in startup_str:
+                await asyncio.sleep(60)
+                continue
+                
             h, m = map(int, startup_str.split(':'))
+            
             # Check if it's currently the target time and we haven't triggered today
             if now.hour == h and now.minute == m and last_triggered_date != now.date():
-                print(f"⏰ Scheduled Startup Triggered: {startup_str}")
-                await start_server()
-                last_triggered_date = now.date()
+                if not is_server_running():
+                    print(f"⏰ Scheduled Startup Triggered: {startup_str}")
+                    
+                    # Notify admin channel
+                    admin_channel_id = config.get('allowed_channel_id', 0)
+                    admin_channel = bot.get_channel(admin_channel_id)
+                    if admin_channel:
+                        await admin_channel.send(f"🕒 **Scheduled Startup:** Initiating daily startup ({startup_str})...")
+                        
+                    await start_server(bot)
+                    last_triggered_date = now.date()
+                else:
+                    # Server already online, just mark as triggered for today
+                    last_triggered_date = now.date()
+                    print(f"⏰ Scheduled Startup Skipped: Server already online ({startup_str})")
+                    
         except Exception as e:
             print(f"Error in scheduled_startup: {e}")
             
-        await asyncio.sleep(30) # Check every 30 seconds
+        await asyncio.sleep(1) # Check every second for precision
 
-async def stop_server():
-    try:
-        if os.name == 'nt':
-            subprocess.run(["taskkill", "/F", "/IM", "PalServer.exe", "/T"], shell=True)
-        else:
-            subprocess.run(["pkill", "-f", "PalServer"], shell=True)
-        
-        embed = nextcord.Embed(title="paltastic", description="🔴 **OFFLINE**\nPalworld", color=0xFF0000)
-        embed.set_footer(text="powered by Paltastic")
-        
-        status_channel_id = config.get('status_channel_id', 0)
-        channel = bot.get_channel(status_channel_id)
-        if channel:
-            await channel.send(embed=embed)
-    except Exception as e:
-        allowed_channel_id = config.get('allowed_channel_id', 0)
-        channel = bot.get_channel(allowed_channel_id)
-        if channel:
-            await channel.send(f"❌ Failed to stop the server: {e}")
-
-async def start_server():
-    global server_starter
-    try:
-        startup_script = config.get('startup_script', '')
-        server_directory = config.get('server_directory', '')
-        
-        if os.name == 'nt':
-            subprocess.Popen(["cmd.exe", "/c", startup_script], cwd=server_directory, shell=True)
-        else:
-            await asyncio.create_subprocess_exec("bash", startup_script, cwd=server_directory)
-        
-        server_starter = "Scheduled Task"
-        embed = nextcord.Embed(title="paltastic", description="🟢 **ONLINE**\nPalworld", color=0x00FF00)
-        embed.set_footer(text="powered by Paltastic")
-        
-        status_channel_id = config.get('status_channel_id', 0)
-        channel = bot.get_channel(status_channel_id)
-        if channel:
-            await channel.send(embed=embed)
-    except Exception as e:
-        allowed_channel_id = config.get('allowed_channel_id', 0)
-        channel = bot.get_channel(allowed_channel_id)
-        if channel:
-            await channel.send(f"❌ Failed to start the server: {e}")
 
 
 
@@ -831,4 +878,6 @@ async def tail_palguard_logs():
             
         await asyncio.sleep(2) # Check every 2 seconds
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    instance_lock = enforce_single_instance()
+    bot.run(TOKEN)

@@ -1,5 +1,6 @@
 @echo off
-set "SCRIPT_PATH=d:\APPS DEVELOPMENT\startbot\startupbot.py"
+cd /d "%~dp0"
+set "SCRIPT_PATH=startupbot.py"
 echo Starting Bot in Background (Windowless)...
 start /b pythonw.exe "%SCRIPT_PATH%"
 echo Bot has been launched in the background.

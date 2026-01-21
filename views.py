@@ -8,6 +8,7 @@ from config_manager import config
 
 
 import asyncio
+from server_utils import is_server_running, start_server, stop_server, restart_server
 
 class ServerControlView(View):
     """View with buttons to control the Palworld server"""
@@ -16,37 +17,6 @@ class ServerControlView(View):
         super().__init__(timeout=None)  # No timeout to keep persistent
         self._processing_lock = False
 
-    def is_server_running(self):
-        """Check if the specific server instance is running based on directory and script"""
-        server_directory = config.get('server_directory')
-        startup_script = config.get('startup_script')
-        
-        # Normalize path for comparison
-        if server_directory:
-            server_directory = os.path.normpath(server_directory.lower())
-
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cwd']):
-            try:
-                # Check CWD (Current Working Directory)
-                try:
-                    proc_cwd = os.path.normpath(proc.cwd().lower()) if proc.cwd() else ""
-                    if server_directory and server_directory in proc_cwd:
-                         # Use loose checking as requested to find "configured instances"
-                         # We check if it is a relevant process type (java, pal, cmd, etc)
-                         # OR if checking CWD is enough for the user (seems to be what they want)
-                         return True
-                except (psutil.AccessDenied, FileNotFoundError):
-                    pass
-                
-                # Check cmdline for startup script
-                if proc.info['cmdline'] and startup_script:
-                    cmdline = " ".join(proc.info['cmdline']).lower()
-                    if startup_script.lower() in cmdline:
-                        return True
-
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
-        return False
 
     async def check_permissions(self, interaction: Interaction) -> bool:
         """Check if user has permission to use these controls"""
@@ -79,159 +49,110 @@ class ServerControlView(View):
 
 
     def is_server_running(self):
-        """Check if PalServer is currently running"""
-        # Reverting to simpler check as 'smart' checks were finding stuck/ghost CMD processes
-        # and preventing the server from starting.
-        for proc in psutil.process_iter(['pid', 'name']):
-            try:
-                if 'PalServer' in proc.info['name']:
-                    return True
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
-        return False
+        """Check if PalServer is currently running using centralized logic"""
+        return is_server_running()
 
     @nextcord.ui.button(label='Start Server', style=nextcord.ButtonStyle.green, emoji='🟢', custom_id='start_server_btn')
     async def start_server_button(self, button: nextcord.ui.Button, interaction: Interaction):
         print("🖱️ 'Start Server' button clicked!")
         
+        # Defer immediately to prevent interaction failure on slow checks
+        await interaction.response.defer(ephemeral=True)
+        
         if self._processing_lock:
-            print("🔒 Button locked (processing previous click)")
-            await interaction.response.send_message("⚠️ Already processing a request. Please wait...", ephemeral=True)
+            await interaction.followup.send("⚠️ Already processing a request. Please wait...", ephemeral=True)
+            return
+
+        # Immediate state check
+        if is_server_running():
+            await interaction.followup.send("✅ Server is already running!", ephemeral=True)
             return
 
         self._processing_lock = True
         try:
-            # Acknowledge immediately to prevent timeout/retries
-            await interaction.response.defer(ephemeral=True)
+            # Acknowledge and inform
+            await interaction.followup.send("🚀 Starting server... please wait.", ephemeral=True)
             
-            # Double check running state
-            if self.is_server_running():
-                print("⚠️ Server found running during check.")
-                await interaction.followup.send("✅ Server is already running!")
-                return
-                
-            server_directory = config.get('server_directory')
-            startup_script = config.get('startup_script')
+            success = await start_server(interaction.client)
             
-            if not server_directory or not startup_script:
-                await interaction.followup.send("Server directory or startup script not configured!", ephemeral=True)
-                return
-            
-            print(f"🚀 Launching server: {startup_script} in {server_directory}")
-            if os.name == 'nt':
-                # Reverting to original method as requested by user
-                subprocess.Popen(["cmd.exe", "/c", startup_script], cwd=server_directory, shell=True)
+            if success:
+                await interaction.followup.send("✅ Server startup initiated successfully!", ephemeral=True)
             else:
-                await interaction.followup.send("Linux startup not implemented yet.", ephemeral=True)
-                return
-                
-            await interaction.followup.send("✅ Server startup initiated!")
-            
-            # Send status update
-            status_channel_id = config.get('status_channel_id')
-            if status_channel_id:
-                try:
-                    channel = interaction.guild.get_channel(status_channel_id) or interaction.client.get_channel(status_channel_id)
-                    if channel:
-                        embed = nextcord.Embed(title="paltastic", description="🟢 **ONLINE**\nPalworld", color=0x00FF00)
-                        embed.set_footer(text="powered by Paltastic")
-                        await channel.send(embed=embed)
-                except Exception as e:
-                    print(f"Failed to send status update: {e}")
-            
-            # Keep lock for a few seconds to prevent accidental double-clicks
-            await asyncio.sleep(5)
+                await interaction.followup.send("❌ Failed to start the server. Check bot logs for details.", ephemeral=True)
             
         except Exception as e:
             print(f"❌ Error in start_server_button: {e}")
-            await interaction.followup.send(f"❌ Failed to start the server: {e}", ephemeral=True)
+            await interaction.followup.send(f"❌ Failed to start server: {e}", ephemeral=True)
         finally:
             self._processing_lock = False
-            print("🔓 Button lock released")
 
     @nextcord.ui.button(label='Restart Server', style=nextcord.ButtonStyle.blurple, emoji='🔄', custom_id='restart_server_btn')
     async def restart_server_button(self, button: nextcord.ui.Button, interaction: Interaction):
+        print("🖱️ 'Restart Server' button clicked!")
+        
+        # Defer immediately
+        await interaction.response.defer(ephemeral=True)
+        
+        if self._processing_lock:
+            await interaction.followup.send("⚠️ Already processing a request. Please wait...", ephemeral=True)
+            return
+
+        self._processing_lock = True
         try:
-            # Stop the server first
-            if os.name == 'nt':
-                subprocess.run(["taskkill", "/F", "/IM", "PalServer.exe", "/T"], shell=True)
+            # Inform user
+            if not is_server_running():
+                await interaction.followup.send("ℹ️ Server is offline. Starting it instead...", ephemeral=True)
+                success = await start_server(interaction.client)
             else:
-                await interaction.response.send_message("Linux shutdown not implemented yet.", ephemeral=True)
-                return
-                
-            await interaction.response.send_message("Server stopping...", ephemeral=True)
+                await interaction.followup.send("🔄 Initiating graceful restart sequence...", ephemeral=True)
+                success = await restart_server(interaction.client, graceful=True)
             
-            # Send offline status
-            status_channel_id = config.get('status_channel_id')
-            if status_channel_id:
-                try:
-                    channel = interaction.guild.get_channel(status_channel_id) or interaction.client.get_channel(status_channel_id)
-                    if channel:
-                        embed = nextcord.Embed(title="paltastic", description="🔴 **OFFLINE**\nPalworld", color=0xFF0000)
-                        embed.set_footer(text="powered by Paltastic")
-                        await channel.send(embed=embed)
-                except:
-                    pass
-
-            # Wait a bit before starting again
-            await asyncio.sleep(5)
-            
-            # Then start the server
-            server_directory = config.get('server_directory')
-            startup_script = config.get('startup_script')
-            
-            if not server_directory or not startup_script:
-                await interaction.followup.send("Server directory or startup script not configured!", ephemeral=True)
-                return
-            
-            if os.name == 'nt':
-                 subprocess.Popen(["cmd.exe", "/c", startup_script], cwd=server_directory, shell=True)
-            
-            await interaction.followup.send("✅ Server restart initiated!", ephemeral=True)
-
-            # Send online status
-            if status_channel_id:
-                try:
-                    channel = interaction.guild.get_channel(status_channel_id) or interaction.client.get_channel(status_channel_id)
-                    if channel:
-                        embed = nextcord.Embed(title="paltastic", description="🟢 **ONLINE**\nPalworld", color=0x00FF00)
-                        embed.set_footer(text="powered by Paltastic")
-                        await channel.send(embed=embed)
-                except:
-                    pass
+            if success:
+                await interaction.followup.send("✅ Server restart/startup initiated!", ephemeral=True)
+            else:
+                await interaction.followup.send("❌ Restart process encountered an error.", ephemeral=True)
 
         except Exception as e:
-             # If interaction is already responded to, use followup
-             if interaction.response.is_done():
-                 await interaction.followup.send(f"❌ Failed to restart the server: {e}", ephemeral=True)
-             else:
-                 await interaction.response.send_message(f"❌ Failed to restart the server: {e}", ephemeral=True)
+            print(f"❌ Error in restart_server_button: {e}")
+            await interaction.followup.send(f"❌ Error during restart: {e}", ephemeral=True)
+        finally:
+            self._processing_lock = False
 
     @nextcord.ui.button(label='Shutdown Server', style=nextcord.ButtonStyle.red, emoji='🔴', custom_id='stop_server_btn')
     async def stop_server_button(self, button: nextcord.ui.Button, interaction: Interaction):
+        print("🖱️ 'Shutdown Server' button clicked!")
+        
+        # Defer immediately
+        await interaction.response.defer(ephemeral=True)
+        
+        if self._processing_lock:
+            await interaction.followup.send("⚠️ Already processing a request. Please wait...", ephemeral=True)
+            return
+
+        # Immediate state check
+        if not is_server_running():
+            await interaction.followup.send("ℹ️ Server is already offline.", ephemeral=True)
+            return
+
+        self._processing_lock = True
         try:
-            if os.name == 'nt':
-                subprocess.run(["taskkill", "/F", "/IM", "PalServer.exe", "/T"], shell=True)
-            else:
-                await interaction.response.send_message("Linux shutdown not implemented yet.", ephemeral=True)
-                return
-                
-            await interaction.response.send_message("✅ Server shutdown initiated!", ephemeral=True)
+            # Acknowledge immediately
+            await interaction.followup.send("⏳ Initiating shutdown... (Graceful attempt first)", ephemeral=True)
             
-            # Send status update
-            status_channel_id = config.get('status_channel_id')
-            if status_channel_id:
-                try:
-                    channel = interaction.guild.get_channel(status_channel_id) or interaction.client.get_channel(status_channel_id)
-                    if channel:
-                        embed = nextcord.Embed(title="paltastic", description="🔴 **OFFLINE**\nPalworld", color=0xFF0000)
-                        embed.set_footer(text="powered by Paltastic")
-                        await channel.send(embed=embed)
-                except Exception as e:
-                    print(f"Failed to send status update: {e}")
+            # Perform the shutdown
+            success = await stop_server(interaction.client)
+            
+            if success:
+                await interaction.followup.send("✅ Server shutdown completed!", ephemeral=True)
+            else:
+                await interaction.followup.send("❌ Shutdown failed or was incomplete.", ephemeral=True)
 
         except Exception as e:
-            await interaction.response.send_message(f"❌ Failed to stop the server: {e}", ephemeral=True)
+            print(f"❌ Error in stop_server_button: {e}")
+            await interaction.followup.send(f"❌ Error during shutdown: {e}", ephemeral=True)
+        finally:
+            self._processing_lock = False
+
 
 
 class InteractiveConfigView(View):
@@ -283,6 +204,13 @@ class InteractiveConfigView(View):
         elif self.category == "schedule":
             self.add_item(ConfigButton(label="Edit Restart Interval", custom_id="edit_restart_int"))
             self.add_item(ConfigButton(label="Edit Announcement Times", custom_id="edit_restart_announcements"))
+            
+            # Toggle for auto-restart
+            auto_enabled = config.get('auto_restart_enabled', True)
+            status_text = "ENABLED" if auto_enabled else "DISABLED"
+            btn_style = nextcord.ButtonStyle.success if auto_enabled else nextcord.ButtonStyle.danger
+            self.add_item(ConfigButton(label=f"Auto-Restart: {status_text}", custom_id="toggle_auto_restart", style=btn_style))
+            
             self.add_item(ConfigButton(label="Edit Shutdown Time", custom_id="edit_shutdown_time"))
             self.add_item(ConfigButton(label="Edit Startup Time", custom_id="edit_startup_time"))
 
@@ -334,11 +262,12 @@ class InteractiveConfigView(View):
             embed.add_field(name="Admin User", value=f"<@{config_data.get('admin_user_id', 0)}>", inline=True)
             embed.add_field(name="Logs Dir", value=f"`{config_data.get('log_directory', 'Not Set')}`", inline=False)
             return embed
-
         elif self.category == "schedule":
             interval = config_data.get('restart_interval', 10800)
             announcements = config_data.get('restart_announcements', '30,10,5,1')
+            auto_enabled = config_data.get('auto_restart_enabled', True)
             embed = nextcord.Embed(title="⏰ Schedule Configuration", color=0xFEE75C)
+            embed.add_field(name="Auto-Restart", value=f"`{'ON' if auto_enabled else 'OFF'}`", inline=True)
             embed.add_field(name="Restart Interval", value=f"`{interval}`s ({interval//3600}h)", inline=True)
             embed.add_field(name="Announcement Times", value=f"`{announcements}` mins", inline=True)
             embed.add_field(name="Shutdown Time", value=f"`{config_data.get('shutdown_time', '05:00')}`", inline=True)
@@ -464,6 +393,13 @@ class ConfigButton(nextcord.ui.Button):
             selector.callback = announce_callback
             temp_view.add_item(selector)
             await interaction.response.send_message("Choose a pre-made announcement sequence:", view=temp_view, ephemeral=True)
+
+        elif self.custom_id == "toggle_auto_restart":
+            current = config.get('auto_restart_enabled', True)
+            config.set('auto_restart_enabled', not current)
+            await interaction.response.send_message(f"✅ Auto-restart is now **{'enabled' if not current else 'disabled'}**!", ephemeral=True)
+            view.setup_items()
+            await view.update_message(interaction)
 
         else:
             # Fallback to a simple 1-field modal for text inputs

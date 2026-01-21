@@ -14,7 +14,8 @@ A premium, feature-rich Discord bot designed to manage Palworld Dedicated Server
 ### ⚡ Advanced Server Controls
 *   **Interactive Panel**: Use the `/server_controls` panel with premium buttons (Start, Restart, Shutdown).
 *   **Live Status**: Real-time server status updates (Online/Offline) sent to your designated status channel.
-*   **Smart Checks**: Bot ensures the server is actually running before performing restarts, avoiding accidental startups during planned downtime.
+*   **Smart Checks**: Bot ensures the server is actually running before performing restarts.
+*   **Smart Shutdowns**: Tries to save the world and shut down gracefully via REST API first; falls back to force-kill if the server is unresponsive to ensure data safety.
 
 ### 🗨️ Cross-Chat Relay (Discord ↔️ Palworld)
 *   **Bi-directional Chat**: Relay messages from Discord to in-game and vice versa.
@@ -23,8 +24,9 @@ A premium, feature-rich Discord bot designed to manage Palworld Dedicated Server
 
 ### ⏰ Advanced Scheduling & Announcements
 *   **Customizable Auto-Restarts**: Set deep maintenance cycles that restart your server automatically at specified intervals.
-*   **In-Game Broadcasts**: Automatic breakdown warnings (e.g., 30m, 10m, 5m, 1m) broadcasted in-game before a restart occur so players can save their progress.
-*   **System Monitoring**: Real-time RAM reports sent every 10 minutes to keep your hardware in check.
+*   **In-Game Broadcasts**: Automatic breakdown warnings (e.g., 30m, 10m, 5m, 1m) broadcasted in-game before a restart occur.
+*   **System Monitoring**: Real-time RAM reports sent every 10 minutes.
+*   **Low-Overhead Monitoring**: Optimized process checks to minimize CPU usage while keeping you informed.
 
 ### 🌐 REST API Power
 *   **Live Player List & Monitor**: `/players` command shows online players. Plus, get automatic **Join/Leave notifications** in Discord.

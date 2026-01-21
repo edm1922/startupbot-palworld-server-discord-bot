@@ -11,6 +11,7 @@ class RestApiHandler:
         self.session: Optional[aiohttp.ClientSession] = None
         self.base_url = config.get('rest_api_endpoint', '')
         self.api_key = config.get('rest_api_key', '')
+        self.last_error = None
         
     async def initialize(self):
         """Initialize the HTTP session"""
@@ -25,7 +26,9 @@ class RestApiHandler:
     
     def is_configured(self) -> bool:
         """Check if REST API is configured"""
-        return bool(self.base_url and self.api_key)
+        base_url = config.get('rest_api_endpoint', '')
+        api_key = config.get('rest_api_key', '')
+        return bool(base_url and api_key)
     
     async def _make_request(self, endpoint: str, method: str = "GET", data: Optional[Dict] = None) -> Optional[Dict[Any, Any]]:
         """Make a request to the REST API using live configuration"""
@@ -51,14 +54,34 @@ class RestApiHandler:
         try:
             async with self.session.request(method, url, auth=auth, json=data, timeout=5) as response:
                 if response.status == 200:
+                    self.last_error = None
                     return await response.json()
+                elif response.status == 401:
+                    self.last_error = "Unauthorized (401): Your API Key (Admin Password) is likely incorrect."
+                elif response.status == 404:
+                    self.last_error = "Not Found (404): The REST API endpoint or version is incorrect."
                 else:
                     error_text = await response.text()
-                    print(f"❌ REST API Failed ({response.status}) at {url}. Response: {error_text}")
-                    return None
+                    self.last_error = f"Server Error ({response.status}): {error_text[:100]}"
+                
+                print(f"❌ REST API Error: {self.last_error} at {url}")
+                return None
+        except asyncio.TimeoutError:
+            self.last_error = "Timeout: The server did not respond in time. Check if the port is open."
+            print(f"❌ REST API Error: {self.last_error} at {url}")
+            return None
+        except aiohttp.ClientConnectorError:
+            self.last_error = "Connection Failed: Could not connect to the server. Is the IP/Port correct? Is the server running?"
+            print(f"❌ REST API Error: {self.last_error} at {url}")
+            return None
         except Exception as e:
+            self.last_error = f"Unexpected Error: {str(e)}"
             print(f"❌ REST API Error connecting to {url}: {e}")
             return None
+    
+    def get_last_error(self) -> str:
+        """Get the last error message"""
+        return self.last_error or "Unknown Error"
     
     async def get_player_list(self) -> Optional[Dict]:
         """Get the current list of players from the server"""
@@ -83,7 +106,7 @@ class RestApiHandler:
     async def shutdown_server_gracefully(self, seconds: int = 60, message: str = "Server shutting down") -> bool:
         """Gracefully shut down the server after a delay"""
         data = {
-            "seconds": seconds,
+            "waittime": seconds,
             "message": message
         }
         result = await self._make_request("/v1/api/shutdown", "POST", data)

@@ -3,8 +3,7 @@ import os
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables is now handled inside ConfigManager using absolute paths
 
 class ConfigManager:
     """
@@ -12,8 +11,17 @@ class ConfigManager:
     while keeping sensitive data secure.
     """
     
+    
     def __init__(self, config_file: str = "bot_config.json"):
-        self.config_file = config_file
+        # Use absolute path based on the script location to ensure consistency
+        # even if launched from a different working directory (like Windows Startup)
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.config_file = os.path.join(self.base_dir, config_file)
+        self.env_file = os.path.join(self.base_dir, ".env")
+        
+        # Load environment variables using absolute path
+        load_dotenv(self.env_file)
+        
         self.config_data = {}
         self.load_config()
     
@@ -27,8 +35,9 @@ class ConfigManager:
             except (json.JSONDecodeError, FileNotFoundError):
                 self.config_data = {}
         
-        # Migrate from .env if JSON config is empty
+        # Migrate from .env ONLY if JSON config is truly empty or missing
         if not self.config_data:
+            print(f"No configuration found at {self.config_file}. Attempting migration...")
             self.migrate_from_env()
     
     def migrate_from_env(self):
@@ -68,6 +77,7 @@ class ConfigManager:
             'shutdown_time': "05:00",
             'startup_time': "10:00",
             'admin_user_id': 0,  # No default admin ID, relies on server admin perms
+            'auto_restart_enabled': True,
         }
         
         for key, default_value in defaults.items():
