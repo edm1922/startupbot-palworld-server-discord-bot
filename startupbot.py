@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from config_manager import config
 from views import ServerControlView, InteractiveConfigView
 from rest_api import rest_api
-from server_utils import is_server_running, start_server, stop_server, restart_server
+from server_utils import is_server_running, start_server, stop_server, restart_server, server_lock
 
 # Environment variables are loaded automatically by config_manager
 
@@ -450,7 +450,7 @@ async def nextrestart(interaction: nextcord.Interaction):
     embed.add_field(name="Scheduled Time", value=f"<t:{int(next_restart_time.timestamp())}:T> (Local Time)", inline=False)
     
     # Add status info
-    if not is_server_running():
+    if not await is_server_running():
         embed.set_footer(text="⚠️ Note: Server is currently offline. Restart may be skipped.")
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -503,7 +503,8 @@ async def stopserver(ctx):
         if user_attempts >= MAX_ATTEMPTS:
             return await ctx.send("❌ You have reached the maximum attempts for today.")
         attempts["stop"][ctx.author.id] = user_attempts + 1
-    await stop_server(bot)
+    async with server_lock:
+        await stop_server(bot)
     await ctx.send(f"✅ Server shutdown initiated. (Attempts left: {MAX_ATTEMPTS - attempts['stop'][ctx.author.id]}/{MAX_ATTEMPTS})")
 
 @bot.command(name="startserver")
@@ -519,9 +520,10 @@ async def startserver(ctx):
         if user_attempts >= MAX_ATTEMPTS:
             return await ctx.send("❌ You have reached the maximum attempts for today.")
         attempts["start"][ctx.author.id] = user_attempts + 1
-    if is_server_running():
-        return await ctx.send("✅ Server is already running!")
-    await start_server(bot)
+    async with server_lock:
+        if await is_server_running():
+            return await ctx.send("✅ Server is already running!")
+        await start_server(bot)
     await ctx.send(f"✅ Server startup initiated. (Attempts left: {MAX_ATTEMPTS - attempts['start'][ctx.author.id]}/{MAX_ATTEMPTS})")
 
 def is_allowed_channel(ctx):
@@ -560,7 +562,7 @@ async def monitor_players():
                 continue
             
             # Skip check if server is offline to avoid console spam
-            if not is_server_running():
+            if not await is_server_running():
                 # Clear state so we can detect joins immediately when it comes back up
                 if last_players:
                     print("📡 Server offline: Clearing player monitoring state.")
@@ -644,7 +646,7 @@ async def auto_restart():
                 continue
 
             # Check if server is actually running first
-            if not is_server_running():
+            if not await is_server_running():
                 print("⏭️ Auto-Restart Skipped: Server is currently offline.")
                 await asyncio.sleep(60)
                 continue
@@ -677,7 +679,16 @@ async def auto_restart():
                         await asyncio.sleep(announce_times[-1])
             
             # Perform the restart
-            await restart_server(bot, graceful=True)
+            async with server_lock:
+                success = await restart_server(bot, graceful=True)
+            
+            if not success:
+                print("⚠️ Auto-Restart: Sequence failed. Retrying in 10 minutes instead of waiting for full interval.")
+                # Update next restart time to reflect retry
+                next_restart_time = datetime.datetime.now() + datetime.timedelta(minutes=10)
+                await asyncio.sleep(600)
+            else:
+                print("✅ Auto-Restart: Sequence completed successfully.")
             
         except Exception as e:
             print(f"❌ Error in auto_restart task: {e}")
@@ -703,7 +714,7 @@ async def scheduled_shutdown():
             
             # Check if it's currently the target time and we haven't triggered today
             if now.hour == h and now.minute == m and last_triggered_date != now.date():
-                if is_server_running():
+                if await is_server_running():
                     print(f"⏰ Scheduled Shutdown Triggered: {shutdown_str}")
                     
                     # Notify admin channel
@@ -718,7 +729,8 @@ async def scheduled_shutdown():
                         await rest_api.broadcast_message("⚠️ DAILY SCHEDULED SHUTDOWN IN 10 SECONDS")
                         await asyncio.sleep(10)
 
-                    await stop_server(bot, graceful=True)
+                    async with server_lock:
+                        await stop_server(bot, graceful=True)
                     last_triggered_date = now.date()
                 else:
                     # Server already offline, just mark as triggered for today
@@ -728,7 +740,7 @@ async def scheduled_shutdown():
         except Exception as e:
             print(f"Error in scheduled_shutdown: {e}")
             
-        await asyncio.sleep(1) # Check every second for precision
+        await asyncio.sleep(10) # Check every 10 seconds for efficiency
 
 async def scheduled_startup():
     """Daily server startup at a specific time."""
@@ -746,7 +758,7 @@ async def scheduled_startup():
             
             # Check if it's currently the target time and we haven't triggered today
             if now.hour == h and now.minute == m and last_triggered_date != now.date():
-                if not is_server_running():
+                if not await is_server_running():
                     print(f"⏰ Scheduled Startup Triggered: {startup_str}")
                     
                     # Notify admin channel
@@ -755,7 +767,8 @@ async def scheduled_startup():
                     if admin_channel:
                         await admin_channel.send(f"🕒 **Scheduled Startup:** Initiating daily startup ({startup_str})...")
                         
-                    await start_server(bot)
+                    async with server_lock:
+                        await start_server(bot)
                     last_triggered_date = now.date()
                 else:
                     # Server already online, just mark as triggered for today
@@ -765,7 +778,7 @@ async def scheduled_startup():
         except Exception as e:
             print(f"Error in scheduled_startup: {e}")
             
-        await asyncio.sleep(1) # Check every second for precision
+        await asyncio.sleep(10) # Check every 10 seconds for efficiency
 
 
 

@@ -6,15 +6,20 @@ import asyncio
 from config_manager import config
 from rest_api import rest_api
 
-def is_server_running():
-    """Check if the Palworld server is running by looking for actual binaries."""
+# Global lock to prevent conflicting server operations (e.g. manual vs auto-restart)
+server_lock = asyncio.Lock()
+
+# Caching for server status to prevent redundant process scans
+_status_cache = {"running": False, "timestamp": 0}
+STATUS_CACHE_TTL = 2.0 # 2 seconds
+
+def _sync_is_server_running():
+    """Synchronous implementation of process check."""
     target_binaries = ["palserver.exe", "palserver-win64-shipping.exe", "palserver-win64-shipping-cmd.exe"]
-    
     try:
-        # Optimization: Use process_iter with only needed info
+        # Fetching only 'name' is significantly faster than 'exe' or other fields
         for proc in psutil.process_iter(['name']):
             try:
-                # Use .get() to safely access 'name' and avoid Potential KeyErrors
                 name = proc.info.get('name')
                 if name:
                     proc_name = name.lower()
@@ -24,123 +29,194 @@ def is_server_running():
                 continue
     except Exception as e:
         print(f"⚠️ Error checking processes: {e}")
-        
     return False
+
+async def is_server_running():
+    """Check if the Palworld server is running (non-blocking with cache)."""
+    import time
+    now = time.time()
+    
+    # Return cached result if fresh
+    if now - _status_cache["timestamp"] < STATUS_CACHE_TTL:
+        return _status_cache["running"]
+    
+    # Run the synchronous check in a thread to avoid blocking the event loop
+    loop = asyncio.get_event_loop()
+    is_running = await loop.run_in_executor(None, _sync_is_server_running)
+    
+    # Update cache
+    _status_cache["running"] = is_running
+    _status_cache["timestamp"] = now
+    
+    return is_running
 
 async def stop_server(bot=None, graceful=True):
     """Stops the Palworld server, optionally trying gracefully first if REST API is configured."""
-    print(f"🛑 stop_server(graceful={graceful}) function called")
+    print(f"🛑 [SHUTDOWN] stop_server(graceful={graceful}) initiated")
     
     # 1. Immediate check: If server is already offline, return success early
-    if not is_server_running():
-        print("ℹ️ stop_server: Server is already offline. Skipping shutdown logic.")
+    if not await is_server_running():
+        print("ℹ️ [SHUTDOWN] Server is already offline.")
         return True
 
     try:
         # 2. Attempt Graceful Shutdown if REST API is configured
         if graceful and rest_api.is_configured():
-            print("📡 Attempting to save world and shutdown gracefully...")
-            # We don't want to wait forever if the server is hung
+            print("📡 [SHUTDOWN] Attempting graceful shutdown via REST API...")
             try:
-                await asyncio.wait_for(rest_api.save_world(), timeout=6.0)
-                await asyncio.sleep(2) # Give it a moment to finish saving
+                # Broadcast and save
+                await rest_api.broadcast_message("⚠️ SERVER SHUTTING DOWN FOR MAINTENANCE")
+                await asyncio.wait_for(rest_api.save_world(), timeout=10.0)
+                await asyncio.sleep(2)
                 
                 # Send the shutdown command
                 success = await asyncio.wait_for(
-                    rest_api.shutdown_server_gracefully(seconds=10, message="Server Restarting/Shutting Down"),
-                    timeout=6.0
+                    rest_api.shutdown_server_gracefully(seconds=10, message="Server Restarting"),
+                    timeout=10.0
                 )
                 
                 if success:
-                    print("✅ Graceful shutdown command sent. Waiting for process to exit...")
-                    # Wait up to 15 seconds for it to close on its own
-                    for _ in range(15):
+                    print("✅ [SHUTDOWN] Graceful command sent. Waiting for process exit...")
+                    # Wait up to 30 seconds for it to close (Palworld can be slow)
+                    for i in range(30):
                         if not is_server_running():
-                            print("✅ Server process exited gracefully.")
+                            print(f"✅ [SHUTDOWN] Server process exited gracefully after {i}s.")
                             break
                         await asyncio.sleep(1)
             except asyncio.TimeoutError:
-                print("⚠️ Graceful shutdown timed out. Proceeding to force kill.")
+                print("⚠️ [SHUTDOWN] Graceful shutdown timed out.")
             except Exception as e:
-                print(f"⚠️ Error during graceful shutdown attempt: {e}")
+                print(f"⚠️ [SHUTDOWN] Error during graceful attempt: {e}")
         
         # 3. Force kill any remaining processes (fallback)
-        if is_server_running():
-            print("🔪 Force-killing server processes...")
+        if await is_server_running():
+            print("🔪 [SHUTDOWN] Force-killing server processes...")
             if os.name == 'nt':
-                # Use taskkill tree kill to ensure we get everything
-                subprocess.run(["taskkill", "/F", "/IM", "PalServer.exe", "/T"], shell=True, capture_output=True)
-                subprocess.run(["taskkill", "/F", "/IM", "PalServer-Win64-Shipping.exe", "/T"], shell=True, capture_output=True)
+                # Kill both the launcher and the shipping binary tree
+                for bin_name in ["PalServer.exe", "PalServer-Win64-Shipping.exe"]:
+                     subprocess.run(["taskkill", "/F", "/IM", bin_name, "/T"], shell=True, capture_output=True)
             else:
-                subprocess.run(["pkill", "-f", "PalServer"], shell=True)
+                subprocess.run(["pkill", "-9", "-f", "PalServer"], shell=True)
             
-            # Brief pause to let OS clean up
-            await asyncio.sleep(1)
+            # Pause to let OS release file handles/ports
+            await asyncio.sleep(3)
             
         # 4. Final verification and notification
-        if bot:
-            status_channel_id = config.get('status_channel_id', 0)
-            channel = bot.get_channel(status_channel_id)
-            if channel:
-                embed = nextcord.Embed(title="paltastic", description="🔴 **OFFLINE**\nPalworld", color=0xFF0000)
-                embed.set_footer(text="powered by Paltastic")
-                await channel.send(embed=embed)
+        offline_success = not await is_server_running()
         
-        # Return success if it's now stopped
-        return not is_server_running()
+        if offline_success:
+            print("✅ [SHUTDOWN] Server is now confirmed OFFLINE.")
+            if bot:
+                status_channel_id = config.get('status_channel_id', 0)
+                channel = bot.get_channel(status_channel_id)
+                if channel:
+                    embed = nextcord.Embed(title="paltastic", description="🔴 **OFFLINE**\nPalworld", color=0xFF0000)
+                    embed.set_footer(text="powered by Paltastic")
+                    try: await channel.send(embed=embed)
+                    except: pass
+        else:
+            print("❌ [SHUTDOWN] FAILED to stop server. Processes still persist.")
+        
+        return offline_success
     except Exception as e:
-        print(f"❌ Critical error in stop_server: {e}")
+        print(f"❌ [SHUTDOWN] Critical error: {e}")
         return False
 
 async def start_server(bot=None):
-    """Starts the Palworld server using subprocess.Popen."""
-    print("🚀 start_server() function called")
+    """Starts the Palworld server and verifies its status."""
+    print("🚀 [STARTUP] start_server() initiated")
     try:
         startup_script = config.get('startup_script', '')
         server_directory = config.get('server_directory', '')
         
         if not startup_script or not server_directory:
-            print("⚠️ Cannot start: Missing config script/dir")
+            print("⚠️ [STARTUP] Aborted: Missing script or directory in config.")
             return False
 
+        if not os.path.exists(os.path.join(server_directory, startup_script)):
+            print(f"⚠️ [STARTUP] Aborted: Startup script not found: {startup_script}")
+            return False
+
+        # Start the process
         if os.name == 'nt':
-            subprocess.Popen(["cmd.exe", "/c", startup_script], cwd=server_directory, shell=True)
+            # Use CREATE_NEW_CONSOLE to ensure independence and visibility for debugging
+            # Also using 'start' command via shell ensures batch files run correctly
+            print(f"📂 [STARTUP] Running {startup_script} in {server_directory}")
+            subprocess.Popen(
+                f'cmd.exe /c start /b {startup_script}', 
+                cwd=server_directory, 
+                shell=True,
+                creationflags=subprocess.CREATE_NEW_CONSOLE if hasattr(subprocess, 'CREATE_NEW_CONSOLE') else 0
+            )
         else:
             await asyncio.create_subprocess_exec("bash", startup_script, cwd=server_directory)
         
-        if bot:
-            status_channel_id = config.get('status_channel_id', 0)
-            channel = bot.get_channel(status_channel_id)
-            if channel:
-                embed = nextcord.Embed(title="paltastic", description="🟢 **ONLINE**\nPalworld", color=0x00FF00)
-                embed.set_footer(text="powered by Paltastic")
-                await channel.send(embed=embed)
-        return True
+        # 5. Verification Loop: Wait and check if it actually stays running
+        print("⏳ [STARTUP] Verifying process startup...")
+        success = False
+        for i in range(10): # Check for 10 seconds
+            await asyncio.sleep(2)
+            if await is_server_running():
+                print(f"✅ [STARTUP] Server process detected after {i*2+2}s.")
+                success = True
+                break
+        
+        if success:
+            if bot:
+                status_channel_id = config.get('status_channel_id', 0)
+                channel = bot.get_channel(status_channel_id)
+                if channel:
+                    embed = nextcord.Embed(title="paltastic", description="🟢 **ONLINE**\nPalworld", color=0x00FF00)
+                    embed.set_footer(text="powered by Paltastic")
+                    try: await channel.send(embed=embed)
+                    except: pass
+            return True
+        else:
+            print("❌ [STARTUP] Server failed to appear in process list after launch attempt.")
+            return False
+
     except Exception as e:
-        print(f"❌ Error in start_server: {e}")
+        print(f"❌ [STARTUP] Critical error: {e}")
         return False
 
 async def restart_server(bot=None, graceful=True):
-    """Full restart cycle: Stop then Start."""
-    print(f"🔄 restart_server(graceful={graceful}) initiated")
+    """Full restart cycle: Stop then Start with verification."""
+    print(f"🔄 [RESTART] Global restart sequence beginning (Graceful={graceful})")
     
     # 1. Stop the server completely
     stopped = await stop_server(bot, graceful=graceful)
     
-    # If we couldn't stop it (and it's still running), we shouldn't try to start another instance
     if not stopped:
-        print("❌ Restart Aborted: Failed to stop the server.")
+        print("❌ [RESTART] Aborted: Failed to stop the current instance.")
         if bot:
-            status_channel_id = config.get('status_channel_id', 0)
-            channel = bot.get_channel(status_channel_id)
-            if channel:
-                embed = nextcord.Embed(title="Restart Failed", description="Could not stop the existing server process.", color=0xFF0000)
-                await channel.send(embed=embed)
+            try:
+                allowed_channel_id = config.get('allowed_channel_id', 0)
+                channel = bot.get_channel(allowed_channel_id)
+                if channel:
+                    await channel.send("⚠️ **Restart Failed:** Could not stop the existing server process. Aborting startup to prevent conflicts.")
+            except: pass
         return False
 
-    # 2. Longer buffer time to ensure ports/files are released
-    print("⏳ Waiting 15 seconds for complete shutdown...")
-    await asyncio.sleep(15)
+    # 2. Safe buffer time
+    # Palworld sometimes takes a while to release memory and network ports
+    wait_time = 20 # Increased from 15
+    print(f"⏳ [RESTART] Waiting {wait_time}s for system cleanup...")
+    await asyncio.sleep(wait_time)
     
     # 3. Start the server
-    return await start_server(bot)
+    started = await start_server(bot)
+    
+    if started:
+        print("✅ [RESTART] Sequence completed successfully.")
+    else:
+        print("❌ [RESTART] Sequence failed during startup phase.")
+        if bot:
+            try:
+                allowed_channel_id = config.get('allowed_channel_id', 0)
+                channel = bot.get_channel(allowed_channel_id)
+                if channel:
+                    await channel.send("❌ **Restart Warning:** Shutdown succeeded, but server failed to start up! Please check manually.")
+            except: pass
+            
+    return started
+

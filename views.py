@@ -8,7 +8,7 @@ from config_manager import config
 
 
 import asyncio
-from server_utils import is_server_running, start_server, stop_server, restart_server
+from server_utils import is_server_running, start_server, stop_server, restart_server, server_lock
 
 class ServerControlView(View):
     """View with buttons to control the Palworld server"""
@@ -48,9 +48,9 @@ class ServerControlView(View):
             pass
 
 
-    def is_server_running(self):
+    async def is_server_running(self):
         """Check if PalServer is currently running using centralized logic"""
-        return is_server_running()
+        return await is_server_running()
 
     @nextcord.ui.button(label='Start Server', style=nextcord.ButtonStyle.green, emoji='🟢', custom_id='start_server_btn')
     async def start_server_button(self, button: nextcord.ui.Button, interaction: Interaction):
@@ -64,7 +64,7 @@ class ServerControlView(View):
             return
 
         # Immediate state check
-        if is_server_running():
+        if await is_server_running():
             await interaction.followup.send("✅ Server is already running!", ephemeral=True)
             return
 
@@ -73,7 +73,8 @@ class ServerControlView(View):
             # Acknowledge and inform
             await interaction.followup.send("🚀 Starting server... please wait.", ephemeral=True)
             
-            success = await start_server(interaction.client)
+            async with server_lock:
+                success = await start_server(interaction.client)
             
             if success:
                 await interaction.followup.send("✅ Server startup initiated successfully!", ephemeral=True)
@@ -100,12 +101,13 @@ class ServerControlView(View):
         self._processing_lock = True
         try:
             # Inform user
-            if not is_server_running():
-                await interaction.followup.send("ℹ️ Server is offline. Starting it instead...", ephemeral=True)
-                success = await start_server(interaction.client)
-            else:
-                await interaction.followup.send("🔄 Initiating graceful restart sequence...", ephemeral=True)
-                success = await restart_server(interaction.client, graceful=True)
+            async with server_lock:
+                if not await is_server_running():
+                    await interaction.followup.send("ℹ️ Server is offline. Starting it instead...", ephemeral=True)
+                    success = await start_server(interaction.client)
+                else:
+                    await interaction.followup.send("🔄 Initiating graceful restart sequence...", ephemeral=True)
+                    success = await restart_server(interaction.client, graceful=True)
             
             if success:
                 await interaction.followup.send("✅ Server restart/startup initiated!", ephemeral=True)
@@ -130,7 +132,7 @@ class ServerControlView(View):
             return
 
         # Immediate state check
-        if not is_server_running():
+        if not await is_server_running():
             await interaction.followup.send("ℹ️ Server is already offline.", ephemeral=True)
             return
 
@@ -140,7 +142,8 @@ class ServerControlView(View):
             await interaction.followup.send("⏳ Initiating shutdown... (Graceful attempt first)", ephemeral=True)
             
             # Perform the shutdown
-            success = await stop_server(interaction.client)
+            async with server_lock:
+                success = await stop_server(interaction.client)
             
             if success:
                 await interaction.followup.send("✅ Server shutdown completed!", ephemeral=True)

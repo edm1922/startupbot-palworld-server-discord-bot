@@ -55,6 +55,9 @@ A premium, feature-rich Discord bot designed to manage Palworld Dedicated Server
     python startupbot.py
     ```
 
+    *   **Background Running**: Use `start_background_bot.bat` to run the bot without a console window.
+    *   **Quick Restart**: Use `restart_bot.bat` if the bot becomes unresponsive. This will forcefully kill any existing bot processes and launch a fresh instance.
+
 4.  **In-App Configuration**:
     Once the bot is online, type `/config` in your Discord server.
     *   **Main Hub**: Navigate through Categories using the main dropdown.
