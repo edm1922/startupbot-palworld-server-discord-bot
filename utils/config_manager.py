@@ -13,11 +13,10 @@ class ConfigManager:
     
     
     def __init__(self, config_file: str = "bot_config.json"):
-        # Use absolute path based on the script location to ensure consistency
-        # even if launched from a different working directory (like Windows Startup)
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.config_file = os.path.join(self.base_dir, config_file)
-        self.env_file = os.path.join(self.base_dir, ".env")
+        # self.base_dir isutils/ folder, so we go up one to get root
+        self.root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.config_file = os.path.join(self.root_dir, "data", config_file)
+        self.env_file = os.path.join(self.root_dir, ".env")
         
         # Load environment variables using absolute path
         load_dotenv(self.env_file)

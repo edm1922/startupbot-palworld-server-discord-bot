@@ -4,11 +4,9 @@ from nextcord import Interaction
 import subprocess
 import os
 import psutil
-from config_manager import config
-
-
+from utils.config_manager import config
 import asyncio
-from server_utils import is_server_running, start_server, stop_server, restart_server, server_lock
+from utils.server_utils import is_server_running, start_server, stop_server, restart_server, server_lock
 
 class ServerControlView(View):
     """View with buttons to control the Palworld server"""
@@ -177,7 +175,9 @@ class InteractiveConfigView(View):
             nextcord.SelectOption(label="Server", emoji="🖥️", value="server", description="Directories and startup scripts"),
             nextcord.SelectOption(label="Schedule", emoji="⏰", value="schedule", description="Auto-restarts and daily timers"),
             nextcord.SelectOption(label="REST API", emoji="🌐", value="api", description="Game server API settings"),
+            nextcord.SelectOption(label="RCON", emoji="🔌", value="rcon", description="RCON connection settings"),
             nextcord.SelectOption(label="Chat Relay", emoji="💬", value="chat", description="Discord <-> Game chat settings"),
+            nextcord.SelectOption(label="Rewards & Stats", emoji="🎁", value="rewards", description="Player rewards and live stats"),
         ]
         
         select = nextcord.ui.Select(
@@ -197,6 +197,8 @@ class InteractiveConfigView(View):
             self.add_item(ConfigButton(label="Set RAM Channel", custom_id="set_ram_ch", style=nextcord.ButtonStyle.primary))
             self.add_item(ConfigButton(label="Set Chat Channel", custom_id="set_chat_ch", style=nextcord.ButtonStyle.primary))
             self.add_item(ConfigButton(label="Set Monitor Channel", custom_id="set_monitor_ch", style=nextcord.ButtonStyle.primary))
+            self.add_item(ConfigButton(label="Set Stats Channel", custom_id="set_stats_ch", style=nextcord.ButtonStyle.primary))
+            self.add_item(ConfigButton(label="Set Shop Channel", custom_id="set_shop_ch", style=nextcord.ButtonStyle.primary))
         
         elif self.category == "server":
             self.add_item(ConfigButton(label="Edit Server Directory", custom_id="edit_server_dir"))
@@ -221,8 +223,24 @@ class InteractiveConfigView(View):
             self.add_item(ConfigButton(label="Edit API Endpoint", custom_id="edit_api_endpoint"))
             self.add_item(ConfigButton(label="Edit API Key", custom_id="edit_api_key"))
 
+        elif self.category == "rcon":
+            self.add_item(ConfigButton(label="Edit RCON Host", custom_id="edit_rcon_host"))
+            self.add_item(ConfigButton(label="Edit RCON Port", custom_id="edit_rcon_port"))
+            self.add_item(ConfigButton(label="Edit RCON Password", custom_id="edit_rcon_pass", style=nextcord.ButtonStyle.danger))
+
         elif self.category == "chat":
             self.add_item(ConfigButton(label="Edit Webhook URL", custom_id="edit_webhook"))
+        
+        elif self.category == "rewards":
+            # Toggle for rewards system
+            rewards_enabled = config.get('rewards_enabled', True)
+            status_text = "ENABLED" if rewards_enabled else "DISABLED"
+            btn_style = nextcord.ButtonStyle.success if rewards_enabled else nextcord.ButtonStyle.danger
+            self.add_item(ConfigButton(label=f"Reward System: {status_text}", custom_id="toggle_rewards", style=btn_style))
+            
+            # Stats & Shop channel configuration
+            self.add_item(ConfigButton(label="Set Stats Channel", custom_id="set_stats_ch", style=nextcord.ButtonStyle.primary))
+            self.add_item(ConfigButton(label="Set Shop Channel", custom_id="set_shop_ch", style=nextcord.ButtonStyle.primary))
 
     async def category_callback(self, interaction: Interaction):
         self.category = interaction.data['values'][0]
@@ -255,6 +273,8 @@ class InteractiveConfigView(View):
             embed.add_field(name="RAM Channel", value=f"<#{config_data.get('ram_usage_channel_id', 0)}>", inline=True)
             embed.add_field(name="Chat Channel", value=f"<#{config_data.get('chat_channel_id', 0)}>", inline=True)
             embed.add_field(name="Monitor Channel", value=f"<#{config_data.get('player_monitor_channel_id', 0)}>", inline=True)
+            embed.add_field(name="Stats Channel", value=f"<#{config_data.get('stats_channel_id', 0)}>", inline=True)
+            embed.add_field(name="Shop Channel", value=f"<#{config_data.get('shop_channel_id', 0)}>", inline=True)
             embed.set_footer(text="Click a button to change a channel using a dropdown selector.")
             return embed
 
@@ -284,9 +304,39 @@ class InteractiveConfigView(View):
             embed.add_field(name="API Key", value="`********`" if config_data.get('rest_api_key') else "`Not Set`", inline=False)
             return embed
 
+        elif self.category == "rcon":
+            embed = nextcord.Embed(title="🔌 RCON Configuration", color=0xFFA500)
+            embed.add_field(name="Host IP", value=f"`{config_data.get('rcon_host', '127.0.0.1')}`", inline=False)
+            embed.add_field(name="Port", value=f"`{config_data.get('rcon_port', 25575)}`", inline=False)
+            embed.add_field(name="Password", value="`********`" if config_data.get('rcon_password') else "`Not Set`", inline=False)
+            embed.set_footer(text="Used for giving item rewards to players.")
+            return embed
+
         elif self.category == "chat":
             embed = nextcord.Embed(title="💬 Chat Relay Configuration", color=0x57F287)
             embed.add_field(name="Webhook URL", value="`Configured`" if config_data.get('chat_webhook_url') else "`Not Set`", inline=False)
+            return embed
+        
+        elif self.category == "rewards":
+            rewards_enabled = config_data.get('rewards_enabled', True)
+            stats_channel_id = config_data.get('stats_channel_id', 0)
+            
+            embed = nextcord.Embed(title="🎁 Rewards & Stats Configuration", color=0xFFD700)
+            embed.add_field(name="Reward System", value=f"`{'ENABLED' if rewards_enabled else 'DISABLED'}`", inline=True)
+            embed.add_field(name="Stats Channel", value=f"<#{stats_channel_id}>" if stats_channel_id > 0 else "`Not Set`", inline=True)
+            shop_channel_id = config_data.get('shop_channel_id', 0)
+            embed.add_field(name="Shop Channel", value=f"<#{shop_channel_id}>" if shop_channel_id > 0 else "`Not Set`", inline=True)
+            
+            embed.add_field(name="📊 Features", value=(
+                "• Daily login rewards with streak bonuses\n"
+                "• Building & crafting rewards\n"
+                "• Technology unlock bonuses\n"
+                "• Rank system (6 Progressive Ranks)\n"
+                "• Live stats display (auto-updates every 5 min)\n"
+                "• In-game reward notifications"
+            ), inline=False)
+            
+            embed.set_footer(text="Toggle rewards on/off • Set stats channel for live display")
             return embed
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -311,7 +361,9 @@ class ConfigButton(nextcord.ui.Button):
                 "set_status_ch": "status_channel_id",
                 "set_ram_ch": "ram_usage_channel_id",
                 "set_chat_ch": "chat_channel_id",
-                "set_monitor_ch": "player_monitor_channel_id"
+                "set_monitor_ch": "player_monitor_channel_id",
+                "set_stats_ch": "stats_channel_id",
+                "set_shop_ch": "shop_channel_id"
             }
             config_key = channel_type_map.get(self.custom_id)
             
@@ -322,7 +374,24 @@ class ConfigButton(nextcord.ui.Button):
             async def select_callback(inter: Interaction):
                 selected_channel = selector.values[0]
                 config.set(config_key, selected_channel.id)
-                await inter.response.send_message(f"✅ Successfully updated channel to {selected_channel.mention}!", ephemeral=True)
+                
+                # If stats channel, update live stats display
+                if config_key == "stats_channel_id":
+                    try:
+                        # Import here to avoid circular imports
+                        from main import live_stats
+                        if live_stats:
+                            live_stats.set_channel(selected_channel.id)
+                            await live_stats.force_update()
+                            await inter.response.send_message(f"✅ Stats channel set to {selected_channel.mention} and live display activated!", ephemeral=True)
+                        else:
+                            await inter.response.send_message(f"✅ Stats channel set to {selected_channel.mention}! (Will activate on bot restart)", ephemeral=True)
+                    except Exception as e:
+                        print(f"Error updating live stats: {e}")
+                        await inter.response.send_message(f"✅ Stats channel set to {selected_channel.mention}!", ephemeral=True)
+                else:
+                    await inter.response.send_message(f"✅ Successfully updated channel to {selected_channel.mention}!", ephemeral=True)
+                
                 # Update parent view
                 await view.update_message(interaction)
                 
@@ -403,6 +472,18 @@ class ConfigButton(nextcord.ui.Button):
             await interaction.response.send_message(f"✅ Auto-restart is now **{'enabled' if not current else 'disabled'}**!", ephemeral=True)
             view.setup_items()
             await view.update_message(interaction)
+        
+        elif self.custom_id == "toggle_rewards":
+            current = config.get('rewards_enabled', True)
+            config.set('rewards_enabled', not current)
+            status = "enabled" if not current else "disabled"
+            await interaction.response.send_message(
+                f"✅ Reward system is now **{status}**!\n"
+                f"{'Players will earn PALDOGS for activities.' if not current else 'Reward tracking is paused.'}",
+                ephemeral=True
+            )
+            view.setup_items()
+            await view.update_message(interaction)
 
         else:
             # Fallback to a simple 1-field modal for text inputs
@@ -414,7 +495,10 @@ class ConfigButton(nextcord.ui.Button):
                 "edit_startup_time": ("Startup Time (HH:MM)", "startup_time"),
                 "edit_api_endpoint": ("REST API Endpoint (IP:Port)", "rest_api_endpoint"),
                 "edit_api_key": ("REST API Key (Admin Password)", "rest_api_key"),
-                "edit_webhook": ("Chat Webhook URL", "chat_webhook_url")
+                "edit_webhook": ("Chat Webhook URL", "chat_webhook_url"),
+                "edit_rcon_host": ("RCON Host IP", "rcon_host"),
+                "edit_rcon_port": ("RCON Port", "rcon_port", int),
+                "edit_rcon_pass": ("RCON Password", "rcon_password")
             }
             
             label, key, *data_type = modal_map.get(self.custom_id, ("Value", "unknown"))

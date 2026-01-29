@@ -1,0 +1,93 @@
+{
+    "starter": {
+        "items": {
+            "PalSphere": 25,
+            "IronHelmet": 1,
+            "Shield_01": 1,
+            "Axe_Tier_02": 1,
+            "Pickaxe_Tier_02": 1,
+            "WeakerBow": 1,
+            "Arrow": 50,
+            "Pizza": 25,
+            "CopperArmor": 1
+        },
+        "description": "asic supplies to help you get started or recover quickly. Perfect for new players and fresh spawns.",
+        "price": 10
+    },
+    "builder_kit": {
+        "items": {
+            "Wood": 200,
+            "Stone": 300,
+            "RepairKit": 50
+        },
+        "description": "Materials and parts for base construction and repairs. Ideal for builders and base upgrades.",
+        "price": 10
+    },
+    "survival_kit": {
+        "items": {
+            "Salad": 50,
+            "Medicines": 10,
+            "HandgunBullet": 100,
+            "RifleBullet": 150,
+            "Potion": 5
+        },
+        "description": "Food, healing, and essentials for exploration and PvE. Stay alive longer while roaming the world.",
+        "price": 70
+    },
+    "breeding": {
+        "items": {
+            "ExpBoost_03": 10,
+            "ConsumePalLevelUp": 5,
+            "Fruit_hp_01": 5,
+            "Fruit_attack_01": 5,
+            "Fruit__defense_01": 5,
+            "Cake": 50
+        },
+        "description": "Resources to support Pal breeding and farming setups. Great for optimizing your Pal production.",
+        "price": 80
+    },
+    "armory_kit": {
+        "items": {
+            "ExplosiveBullet": 100,
+            "LaserBullet": 200,
+            "MissileBullet": 100,
+            "GatlingBullet": 200,
+            "EnergyLauncherBullet": 50,
+            "LaserGatlingBullet": 50
+        },
+        "description": "Combat-ready supplies for fights and expeditions. Best for PvE and PvP preparation.",
+        "price": 150
+    },
+    "cosmetic_kit": {
+        "items": {
+            "Blueprint_Head001_1": 1,
+            "Blueprint_Head002_1": 1,
+            "Blueprint_Head003_1": 1,
+            "Blueprint_Head004_1": 1,
+            "Blueprint_Head006_1": 1
+        },
+        "description": "Fun and decorative items for customization. Purely visual",
+        "price": 500
+    },
+    "cosmetic_kit2": {
+        "items": {
+            "Head009": 1,
+            "Head010": 1,
+            "Head011": 1,
+            "Head012": 1,
+            "Head013": 1,
+            "Head015": 1
+        },
+        "description": "Fun and decorative items for customization. Purely visual",
+        "price": 500
+    },
+    "palsoul_bundle": {
+        "items": {
+            "PalUpgradeStone": 100,
+            "PalUpgradeStone2": 100,
+            "PalUpgradeStone3": 100
+        },
+        "description": "Palsouls bundle x100 each",
+        "price": 2000
+    }
+}

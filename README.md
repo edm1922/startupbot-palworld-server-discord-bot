@@ -33,6 +33,14 @@ A premium, feature-rich Discord bot designed to manage Palworld Dedicated Server
 *   **Server Diagnostics**: `/serverinfo` provides technical details about your server instance.
 *   **Manual World Saves**: Trigger a `/saveworld` command directly from Discord.
 
+### 🎁 Player Rewards & Stats
+*   **Daily Login Rewards**: Players earn PalMarks every day they log in, with massive streak bonuses (up to 500 PM for 30-day streaks!)
+*   **Activity Rewards**: Earn PalMarks for building, crafting, and unlocking technologies
+*   **Rank System**: Trainer → Gym Leader → Champion with reward multipliers (1x, 2x, 3x)
+*   **Live Stats Display**: Auto-updating Discord channel showing server activity, player leaderboards, and statistics
+*   **In-Game Notifications**: Players see their rewards broadcasted in-game
+*   **Automatic Tracking**: All activities monitored from PalDefender logs
+
 ---
 
 ## 🛠️ Setup Instructions

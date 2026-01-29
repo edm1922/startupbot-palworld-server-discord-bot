@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 from typing import Optional, Dict, Any
-from config_manager import config
+from utils.config_manager import config
 
 
 class RestApiHandler:
@@ -55,7 +55,18 @@ class RestApiHandler:
             async with self.session.request(method, url, auth=auth, json=data, timeout=5) as response:
                 if response.status == 200:
                     self.last_error = None
-                    return await response.json()
+                    # Safely handle JSON vs Text response
+                    content_type = response.headers.get('Content-Type', '')
+                    if 'application/json' in content_type:
+                        try:
+                            return await response.json()
+                        except Exception:
+                            # Fallback if json decoding fails despite header
+                            text = await response.text()
+                            return {"status": "success", "message": text}
+                    else:
+                        text = await response.text()
+                        return {"status": "success", "message": text}
                 elif response.status == 401:
                     self.last_error = "Unauthorized (401): Your API Key (Admin Password) is likely incorrect."
                 elif response.status == 404:
@@ -64,15 +75,17 @@ class RestApiHandler:
                     error_text = await response.text()
                     self.last_error = f"Server Error ({response.status}): {error_text[:100]}"
                 
-                print(f"❌ REST API Error: {self.last_error} at {url}")
+                if self.last_error:
+                    print(f"❌ REST API Error: {self.last_error} at {url}")
                 return None
         except asyncio.TimeoutError:
             self.last_error = "Timeout: The server did not respond in time. Check if the port is open."
-            print(f"❌ REST API Error: {self.last_error} at {url}")
+            # Only print if not a standard timeout during known startup/shutdown periods
+            # For now, let's keep it quiet in the console if it's just a timeout/connection fail
+            # as the calling tasks usually handle the frequency.
             return None
         except aiohttp.ClientConnectorError:
             self.last_error = "Connection Failed: Could not connect to the server. Is the IP/Port correct? Is the server running?"
-            print(f"❌ REST API Error: {self.last_error} at {url}")
             return None
         except Exception as e:
             self.last_error = f"Unexpected Error: {str(e)}"

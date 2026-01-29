@@ -3,8 +3,8 @@ import subprocess
 import psutil
 import nextcord
 import asyncio
-from config_manager import config
-from rest_api import rest_api
+from utils.config_manager import config
+from utils.rest_api import rest_api
 
 # Global lock to prevent conflicting server operations (e.g. manual vs auto-restart)
 server_lock = asyncio.Lock()
@@ -79,7 +79,7 @@ async def stop_server(bot=None, graceful=True):
                     print("✅ [SHUTDOWN] Graceful command sent. Waiting for process exit...")
                     # Wait up to 30 seconds for it to close (Palworld can be slow)
                     for i in range(30):
-                        if not is_server_running():
+                        if not await is_server_running():
                             print(f"✅ [SHUTDOWN] Server process exited gracefully after {i}s.")
                             break
                         await asyncio.sleep(1)
@@ -89,16 +89,31 @@ async def stop_server(bot=None, graceful=True):
                 print(f"⚠️ [SHUTDOWN] Error during graceful attempt: {e}")
         
         # 3. Force kill any remaining processes (fallback)
-        if await is_server_running():
-            print("🔪 [SHUTDOWN] Force-killing server processes...")
-            if os.name == 'nt':
-                # Kill both the launcher and the shipping binary tree
-                for bin_name in ["PalServer.exe", "PalServer-Win64-Shipping.exe"]:
-                     subprocess.run(["taskkill", "/F", "/IM", bin_name, "/T"], shell=True, capture_output=True)
-            else:
-                subprocess.run(["pkill", "-9", "-f", "PalServer"], shell=True)
+        # Check both the binaries AND any wrapper scripts (like the batch file)
+        print("🔪 [SHUTDOWN] Cleaning up server processes and wrappers...")
+        if os.name == 'nt':
+            # 3a. Kill known binaries
+            for bin_name in ["PalServer.exe", "PalServer-Win64-Shipping.exe", "PalServer-Win64-Shipping-Cmd.exe"]:
+                 subprocess.run(["taskkill", "/F", "/IM", bin_name, "/T"], shell=True, capture_output=True)
+            
+            # 3b. Kill any cmd.exe wrappers running our startup script
+            startup_script = config.get('startup_script', '')
+            if startup_script:
+                try:
+                    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                        if proc.info['name'] and 'cmd.exe' in proc.info['name'].lower():
+                            cmdline = proc.info.get('cmdline')
+                            if cmdline and any(startup_script.lower() in str(arg).lower() for arg in cmdline):
+                                print(f"🔪 [SHUTDOWN] Killing wrapper process PID {proc.info['pid']} ({startup_script})")
+                                try: proc.kill()
+                                except: pass
+                except Exception as e:
+                    print(f"⚠️ [SHUTDOWN] Error killing wrappers: {e}")
             
             # Pause to let OS release file handles/ports
+            await asyncio.sleep(4)
+        else:
+            subprocess.run(["pkill", "-9", "-f", "PalServer"], shell=True)
             await asyncio.sleep(3)
             
         # 4. Final verification and notification
@@ -139,11 +154,12 @@ async def start_server(bot=None):
 
         # Start the process
         if os.name == 'nt':
-            # Use CREATE_NEW_CONSOLE to ensure independence and visibility for debugging
-            # Also using 'start' command via shell ensures batch files run correctly
+            # Use CREATE_NEW_CONSOLE to ensure independence and visibility for debugging.
+            # Running directly via cmd /c ensures the wrapper script is trackable.
+            # Removed '/b' as it often causes the process to attach to the bot's console.
             print(f"📂 [STARTUP] Running {startup_script} in {server_directory}")
             subprocess.Popen(
-                f'cmd.exe /c start /b {startup_script}', 
+                f'cmd.exe /c {startup_script}', 
                 cwd=server_directory, 
                 shell=True,
                 creationflags=subprocess.CREATE_NEW_CONSOLE if hasattr(subprocess, 'CREATE_NEW_CONSOLE') else 0
@@ -199,7 +215,7 @@ async def restart_server(bot=None, graceful=True):
 
     # 2. Safe buffer time
     # Palworld sometimes takes a while to release memory and network ports
-    wait_time = 20 # Increased from 15
+    wait_time = 60 # Increased from 20 to avoid port 33103/33105 contention
     print(f"⏳ [RESTART] Waiting {wait_time}s for system cleanup...")
     await asyncio.sleep(wait_time)
     

@@ -1,0 +1,37 @@
+{
+    "default": {
+        "name": "Standard Announcer",
+        "description": "Default server announcements.",
+        "price": 0,
+        "join_template": "✨ [Trainer] {player} has arrived!",
+        "rank_template": "🎊 RANK UP! {player} is now a {rank}!"
+    },
+    "royalty": {
+        "name": "Royal Majesty",
+        "description": "Hear ye, hear ye! A royal presence approaches.",
+        "price": 10000,
+        "join_template": "👑 ALL HAIL! The noble {player} has graced us with their presence!",
+        "rank_template": "🎺 TRUMPETS SOUND! {player} has ascended to the title of {rank}!"
+    },
+    "warrior": {
+        "name": "War Veteran",
+        "description": "Aggressive and focused on strength.",
+        "price": 15000,
+        "join_template": "⚔️ BATTLE READY! The veteran {player} has entered the arena!",
+        "rank_template": "🔥 OVERPOWERED! {player} has dominated their way to {rank}!"
+    },
+    "mythic": {
+        "name": "Mythical Echo",
+        "description": "Ancient and ethereal announcements.",
+        "price": 50000,
+        "join_template": "🌀 THE PROPHECY! The legendary {player} has manifested!",
+        "rank_template": "🌟 TRANSCENDENCE! {player} has evolved into a {rank}!"
+    },
+    "meme": {
+        "name": "Chaos Overlord",
+        "description": "Total chaos and meme energy.",
+        "price": 5000,
+        "join_template": "🤡 OH NO! {player} is back! Everyone panic! 🏃💨",
+        "rank_template": "📈 STONKS! {player} just speedran into {rank}! GIGACHAD!"
+    }
+}
