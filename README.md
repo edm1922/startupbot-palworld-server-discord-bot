@@ -6,40 +6,36 @@ A premium, feature-rich Discord bot designed to manage Palworld Dedicated Server
 
 ## 🚀 Key Features
 
+### 🎁 Giveaway & Reward System
+*   **Interactive Giveaways**: Create giveaways for **Kits** or **Pals** directly from Discord.
+*   **Smart Claiming**: Winners receive a private "Claim Reward" button. The bot checks if the player is currently online before delivering the prize.
+*   **Automated Delivery**: Prizes are delivered via RCON or PalGuard commands automatically.
+
+### 📊 Live Stats & Leaderboards
+*   **Dynamic Stats Channel**: A dedicated channel that auto-updates with server status, player counts, and system performance.
+*   **Player Leaderboards**: Real-time rankings showing the top players by activity and wealth (**PALDOGS**).
+*   **Interactive Profile**: Players can check their `/profile` to see their rank progress, balance, and active announcer pack.
+
+### 🛒 Economic & Rank System
+*   **PALDOGS Currency**: Earn currency through daily logins, activity streaks, and server participation.
+*   **Progression Ranks**: Advance from **Trainer** to **Gym Leader** and **Champion**, unlocking better rewards and multipliers.
+*   **The Shop**: A premium shop interface to spend PALDOGS on kits, announcer packs, and more.
+
+### 🐾 Pal & Kit Management
+*   **Pal Cage**: Advanced management for Pals. Import/Export Pal data and manage captures.
+*   **Custom Kits**: Administrators can define complex item kits for players to claim or win.
+
 ### ⚙️ Interactive Configuration Hub
-*   **Embedded Interface**: No more cumbersome modals. Configure everything via a premium **Interactive Hub** using dropdowns and categories.
-*   **Easy Selectors**: Use **Channel Selectors** and **User Selectors** to setup your server without typing a single ID manually.
-*   **Simplified Mastery**: Choose common intervals (like 3h or 6h restarts) from dropdown lists instead of manually entering seconds.
+*   **Premium Hub**: Configure everything via a premium **Interactive Hub** using dropdowns and categories (`/config`).
+*   **Dual Setup**: Use `/setup_channels` for lightning-fast channel binding without opening the full menu.
 
 ### ⚡ Advanced Server Controls
 *   **Interactive Panel**: Use the `/server_controls` panel with premium buttons (Start, Restart, Shutdown).
-*   **Live Status**: Real-time server status updates (Online/Offline) sent to your designated status channel.
-*   **Smart Checks**: Bot ensures the server is actually running before performing restarts.
-*   **Smart Shutdowns**: Tries to save the world and shut down gracefully via REST API first; falls back to force-kill if the server is unresponsive to ensure data safety.
+*   **Smart Shutdowns**: Tries to save the world and shut down gracefully via REST API first; falls back to force-kill if the server is unresponsive.
 
 ### 🗨️ Cross-Chat Relay (Discord ↔️ Palworld)
 *   **Bi-directional Chat**: Relay messages from Discord to in-game and vice versa.
-*   **Premium Webhook Relay**: In-game chat is relayed to Discord via Webhooks, showing the actual player's name and avatar for a sleek look.
-*   **Log-Based Relay**: Uses PalGuard/PalDefender logs for extremely reliable chat capturing.
-
-### ⏰ Advanced Scheduling & Announcements
-*   **Customizable Auto-Restarts**: Set deep maintenance cycles that restart your server automatically at specified intervals.
-*   **In-Game Broadcasts**: Automatic breakdown warnings (e.g., 30m, 10m, 5m, 1m) broadcasted in-game before a restart occur.
-*   **System Monitoring**: Real-time RAM reports sent every 10 minutes.
-*   **Low-Overhead Monitoring**: Optimized process checks to minimize CPU usage while keeping you informed.
-
-### 🌐 REST API Power
-*   **Live Player List & Monitor**: `/players` command shows online players. Plus, get automatic **Join/Leave notifications** in Discord.
-*   **Server Diagnostics**: `/serverinfo` provides technical details about your server instance.
-*   **Manual World Saves**: Trigger a `/saveworld` command directly from Discord.
-
-### 🎁 Player Rewards & Stats
-*   **Daily Login Rewards**: Players earn PalMarks every day they log in, with massive streak bonuses (up to 500 PM for 30-day streaks!)
-*   **Activity Rewards**: Earn PalMarks for building, crafting, and unlocking technologies
-*   **Rank System**: Trainer → Gym Leader → Champion with reward multipliers (1x, 2x, 3x)
-*   **Live Stats Display**: Auto-updating Discord channel showing server activity, player leaderboards, and statistics
-*   **In-Game Notifications**: Players see their rewards broadcasted in-game
-*   **Automatic Tracking**: All activities monitored from PalDefender logs
+*   **Premium Webhook Relay**: In-game chat is relayed to Discord via Webhooks, showing the actual player's name and avatar.
 
 ---
 
@@ -51,56 +47,69 @@ A premium, feature-rich Discord bot designed to manage Palworld Dedicated Server
     ```
 
 2.  **Authentication**:
-    Add your bot token to the `.env` file:
+    Add your bot token and admin ID to the `.env` file:
     ```env
     DISCORD_BOT_TOKEN=your_token_here
     GUILD_ID=your_server_id
+    ADMIN_USER_ID=your_discord_id
     ```
 
 3.  **Run the Bot**:
     Run `start_bot.bat` or use the command line:
     ```powershell
-    python startupbot.py
+    python main.py
     ```
 
     *   **Background Running**: Use `start_background_bot.bat` to run the bot without a console window.
-    *   **Quick Restart**: Use `restart_bot.bat` if the bot becomes unresponsive. This will forcefully kill any existing bot processes and launch a fresh instance.
+    *   **Quick Restart**: Use `restart_bot.bat` if the bot becomes unresponsive.
 
 4.  **In-App Configuration**:
-    Once the bot is online, type `/config` in your Discord server.
-    *   **Main Hub**: Navigate through Categories using the main dropdown.
-    *   **Channels**: Use the channel selector to bind the bot to specific Discord channels.
-    *   **Schedule**: Set your restart intervals and pick an announcement preset.
+    Once the bot is online, use the slash commands:
+    *   `/setup_channels`: Bind the bot to your Discord channels.
+    *   `/config`: Open the full interactive configuration menu.
 
 ---
 
 ## ⌨️ Command Reference
 
-| Command | Type | Description |
-| :-- | :-- | :-- |
-| `/palhelp` | Slash | Displays this help menu |
-| `/config` | Slash | Open the **Interactive Configuration Hub** (Admin only) |
-| `/server_controls` | Slash | Show the interactive control panel (Admin only) |
-| `/players` | Slash | List online players (requires REST API) |
-| `/serverinfo` | Slash | Show technical server info (requires REST API) |
-| `/saveworld` | Slash | Manually trigger a world save (Admin only) |
-| `!startserver` | Prefix | Start the server (Admin only) |
-| `!stopserver` | Prefix | Stop the server (Admin only) |
+### Player Commands
+| Command | Description |
+| :-- | :-- |
+| `/palhelp` | Displays the help menu with all commands |
+| `/profile` | View your stats, rank, and PALDOGS balance |
+| `/shop` | Open the PALDOGS Exchange shop |
+| `/balance` | Quickly check your PALDOGS balance |
+| `/link` | Link your Discord account to your SteamID |
+| `/players` | List online players (requires REST API) |
+| `/serverinfo` | Show technical server info |
+
+### Admin Commands
+| Command | Description |
+| :-- | :-- |
+| `/config` | Open the **Interactive Configuration Hub** |
+| `/setup_channels` | Quickly configure bot channels |
+| `/server_controls` | Show the interactive control panel |
+| `/giveaway create` | Start a new giveaway for items or Pals |
+| `/kit` | Manage and create item kits |
+| `/pal_cage` | Import, export, and manage Pal data |
+| `/paldog_admin` | Manage shop prices and player progression |
+| `/saveworld` | Manually trigger a world save |
+
+---
+
+## 📂 Documentation
+Detailed guides are available in the `docs/` folder:
+*   [Implementation Summary](docs/IMPLEMENTATION_COMPLETE.md)
+*   [Kit System Guide](docs/KIT_SYSTEM_GUIDE.md)
+*   [Live Stats Setup](docs/LIVE_STATS_README.md)
+*   [Rewards Configuration](docs/REWARDS_SETUP_GUIDE.md)
 
 ---
 
 ## 🔒 Security & Reliability
-*   **Single Instance Lock**: Built-in protection prevents multiple instances of the bot from running simultaneously on the same port.
-*   **Admin-Only Access**: Critical commands are locked behind Discord Administrator permissions or a specific `admin_user_id`.
-*   **Data Integrity**: Configuration is handled through a thread-safe JSON manager, keeping your `.env` clean of non-sensitive data.
-
----
-
-## 📦 Requirements
-*   Python 3.10+
-*   `nextcord`, `aiohttp`, `psutil`
-*   Palworld Dedicated Server
-*   (Optional) PalGuard/PalDefender for chat relay functionality
+*   **Single Instance Lock**: Built-in protection prevents multiple instances.
+*   **Admin-Only Access**: Critical commands are locked behind Administrator permissions.
+*   **Thread-Safe Config**: Configuration is handled through a thread-safe JSON manager.
 
 ---
 *Created by Paltastic - Powering your Palworld experience.*
