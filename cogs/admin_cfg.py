@@ -35,7 +35,9 @@ class AdminConfig(commands.Cog):
         chat_channel: nextcord.TextChannel = nextcord.SlashOption(description="Chat relay", required=False),
         monitor_channel: nextcord.TextChannel = nextcord.SlashOption(description="Player logs", required=False),
         stats_channel: nextcord.TextChannel = nextcord.SlashOption(description="Live stats", required=False),
-        shop_channel: nextcord.TextChannel = nextcord.SlashOption(description="Shop channel", required=False)
+        shop_channel: nextcord.TextChannel = nextcord.SlashOption(description="Shop channel", required=False),
+        roulette_channel: nextcord.TextChannel = nextcord.SlashOption(description="Roulette channel", required=False),
+        blackjack_channel: nextcord.TextChannel = nextcord.SlashOption(description="Blackjack channel", required=False)
     ):
         if not self.is_admin(interaction):
             await interaction.response.send_message("❌ Permission denied.", ephemeral=True)
@@ -63,6 +65,12 @@ class AdminConfig(commands.Cog):
         if shop_channel:
             config.set('shop_channel_id', shop_channel.id)
             changes.append(f"Shop -> {shop_channel.mention}")
+        if roulette_channel:
+            config.set('gambling_channel_id', roulette_channel.id)
+            changes.append(f"Roulette -> {roulette_channel.mention}")
+        if blackjack_channel:
+            config.set('blackjack_channel_id', blackjack_channel.id)
+            changes.append(f"Blackjack -> {blackjack_channel.mention}")
 
         if not changes:
             await interaction.response.send_message("No changes specified.", ephemeral=True)

@@ -17,31 +17,35 @@ class PalDefenderLogParser:
             'building': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) has build an '(.+?)'"),
             'crafting': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) started crafting '(.+?)'"),
             'tech': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) unlocking Technology: '(.+?)'"),
-            'chat': re.compile(r"\[.*?\]\[info\] \[Chat::Global\]\['(.+?)' \(UserId=(steam_\d+), IP=.+?\)\](?:\[.*?\])*: (.+)")
+            'chat': re.compile(r"\[.*?\]\[info\] \[Chat::Global\]\['(.+?)' \(UserId=(steam_\d+), IP=.+?\)\](?:\[.*?\])*: (.+)"),
+            'combat': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) dealing damage \((\d+)\) to '(.+?)'"),
+            'kill': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) killed '(.+?)'")
         }
         
-        # Reward values
+        # Reward values (Both PALDOGS and EXP)
         self.rewards = {
             'building': {
-                'Wooden': 5,
-                'Stone': 10,
-                'Metal': 15,
-                'default': 5
+                'Wooden': {'paldogs': 5, 'exp': 10},
+                'Stone': {'paldogs': 10, 'exp': 20},
+                'Metal': {'paldogs': 15, 'exp': 30},
+                'default': {'paldogs': 5, 'exp': 10}
             },
             'crafting': {
-                'default': 2,
-                'Plastic': 5,
-                'Cement': 5,
-                'SteelIngot': 5,
-                'IronIngot': 3,
-                'CopperIngot': 2,
-                'PalSphere': 10,
-                'Cake': 15
+                'default': {'paldogs': 2, 'exp': 5},
+                'Plastic': {'paldogs': 5, 'exp': 10},
+                'Cement': {'paldogs': 5, 'exp': 10},
+                'SteelIngot': {'paldogs': 5, 'exp': 10},
+                'IronIngot': {'paldogs': 3, 'exp': 8},
+                'CopperIngot': {'paldogs': 2, 'exp': 5},
+                'PalSphere': {'paldogs': 10, 'exp': 20},
+                'Cake': {'paldogs': 15, 'exp': 50}
             },
-            'tech': 50,
-            'chat': 1,
-            'playtime_per_hour': 10,
-            'daily_login': 25
+            'tech': {'paldogs': 50, 'exp': 200},
+            'chat': {'paldogs': 1, 'exp': 2},
+            'combat': {'paldogs': 0, 'exp': 1}, # 1 exp per damage instance? Maybe too much. Let's say per hit.
+            'kill': {'paldogs': 10, 'exp': 50},
+            'playtime_per_hour': {'paldogs': 10, 'exp': 100},
+            'daily_login': {'paldogs': 25, 'exp': 100}
         }
         
         self.rank_multipliers = {
@@ -51,23 +55,20 @@ class PalDefenderLogParser:
         }
         
         self.processed_lines = set()  # Track processed log lines to avoid duplicates
-    
-    def get_building_reward(self, building_name: str) -> int:
-        """Calculate reward for building based on type"""
-        for material in ['Wooden', 'Stone', 'Metal']:
-            if material in building_name:
-                return self.rewards['building'][material]
-        return self.rewards['building']['default']
-    
-    def get_crafting_reward(self, item_name: str) -> int:
-        """Calculate reward for crafting based on item"""
-        # Remove null terminator if present
-        item_name = item_name.replace('\x00', '')
-        
+
+    def get_crafting_reward(self, item_name: str) -> Dict[str, int]:
+        """Calculate PALDOGS and EXP for crafting"""
         for key, value in self.rewards['crafting'].items():
             if key in item_name:
                 return value
         return self.rewards['crafting']['default']
+
+    def get_building_reward(self, building_name: str) -> Dict[str, int]:
+        """Calculate PALDOGS and EXP for building"""
+        for material in ['Wooden', 'Stone', 'Metal']:
+            if material in building_name:
+                return self.rewards['building'][material]
+        return self.rewards['building']['default']
     
     async def apply_rank_multiplier(self, steam_id: str, base_reward: int) -> int:
         """Apply rank multiplier to reward (Async)"""
@@ -150,6 +151,27 @@ class PalDefenderLogParser:
                         'message': message,
                         'reward': self.rewards['chat']
                     }
+
+                elif activity_type == 'combat':
+                    player_name, steam_id, damage, target = match.groups()
+                    return {
+                        'type': 'combat',
+                        'player_name': player_name,
+                        'steam_id': steam_id,
+                        'damage': int(damage),
+                        'target': target,
+                        'reward': self.rewards['combat']
+                    }
+
+                elif activity_type == 'kill':
+                    player_name, steam_id, target = match.groups()
+                    return {
+                        'type': 'kill',
+                        'player_name': player_name,
+                        'steam_id': steam_id,
+                        'target': target,
+                        'reward': self.rewards['kill']
+                    }
         
         return None
     
@@ -173,91 +195,53 @@ class PalDefenderLogParser:
         if activity_type == 'login':
             streak, is_first_today = await db.record_login(steam_id, player_name)
             
-            # 1. Prepare base arrival messages even if no reward
+            # 1. Prepare base arrival messages
             in_game_broadcast = ""
             current_rank = old_rank
             active_announcer = stats.get('active_announcer', 'default') if stats else 'default'
             
-            # If not the first today, we still want to announce arrival but NO rewards
             if not is_first_today:
                 in_game_broadcast = rank_system.get_join_message(active_announcer, player_name)
-                
-                # For Discord, just a simple arrival message if you want, or nothing
-                # Let's return a simple msg so the user knows they are recognized
-                msg = f"📥 **{player_name}** joined the server (Welcome back!)"
+                msg = f"📥 **{player_name}** joined the server"
                 return 0, msg, in_game_broadcast
 
-            # 2. Process Daily Rewards (Only if is_first_today is True)
-            base_reward = self.rewards['daily_login']
+            # 2. Daily Rewards
+            paldogs_reward = self.rewards['daily_login']['paldogs']
+            exp_reward = self.rewards['daily_login']['exp']
             
-            # Calculate streak bonus
-            streak_bonus = 0
+            # Streak bonus
+            streak_p_bonus = 0
+            streak_e_bonus = 0
             streak_msg = ""
+            if streak >= 30: streak_p_bonus, streak_e_bonus, streak_msg = 500, 1000, "🎊 30-DAY STREAK!"
+            elif streak >= 14: streak_p_bonus, streak_e_bonus, streak_msg = 250, 500, "🎉 14-DAY STREAK!"
+            elif streak >= 7: streak_p_bonus, streak_e_bonus, streak_msg = 100, 250, "🔥 7-DAY STREAK!"
+            elif streak >= 3: streak_p_bonus, streak_e_bonus, streak_msg = 50, 100, "⭐ 3-DAY STREAK!"
             
-            if streak >= 30:
-                streak_bonus = 500
-                streak_msg = "🎊 30-DAY STREAK BONUS!"
-            elif streak >= 14:
-                streak_bonus = 250
-                streak_msg = "🎉 14-DAY STREAK BONUS!"
-            elif streak >= 7:
-                streak_bonus = 100
-                streak_msg = "🔥 7-DAY STREAK BONUS!"
-            elif streak >= 3:
-                streak_bonus = 50
-                streak_msg = "⭐ 3-DAY STREAK BONUS!"
+            total_paldogs = await self.apply_rank_multiplier(steam_id, paldogs_reward + streak_p_bonus)
+            total_exp = exp_reward + streak_e_bonus
             
-            total_reward = base_reward + streak_bonus
+            await db.add_palmarks(steam_id, total_paldogs, f"Daily login (Streak: {streak})")
+            leveled_up, new_level = await db.add_experience(steam_id, total_exp)
             
-            if total_reward > 0:
-                total_reward = await self.apply_rank_multiplier(steam_id, total_reward)
-                await db.add_palmarks(steam_id, total_reward, f"Daily login (Streak: {streak})")
-                
-                # Check for rank up immediately after adding login reward
-                new_rank, ranked_up = await rank_system.check_and_update_rank(steam_id)
-                
-                # Get virtual rewards based on rank and streak
-                current_rank = new_rank if ranked_up else old_rank
-                virtual_rewards = rank_system.get_daily_rewards(current_rank, streak)
-                
-                # Create Discord message for the virtual economy
-                rank_emoji = rank_system.get_rank_info(current_rank)['emoji']
-                msg = f"🎉 {rank_emoji} **{player_name}** logged in! +{total_reward} PALDOGS earned."
-                
-                # List virtual items/bonuses added to Discord profile
-                items_list = []
-                for item_id, amount in virtual_rewards['items'].items():
-                    items_list.append(f"{amount}x {item_id}")
-                if virtual_rewards['exp'] > 0:
-                    items_list.append(f"{virtual_rewards['exp']} Rank EXP")
-                
-                if items_list:
-                    msg += f"\n🎁 **Discord Rewards:** {', '.join(items_list)}"
-                
-                if streak > 1:
-                    msg += f"\n🔥 **{streak}-day streak!**"
-                
-                if streak_msg:
-                    msg += f"\n{streak_msg}"
-                
-                # Rank up notification
-                if ranked_up:
-                    new_rank_emoji = rank_system.get_rank_info(new_rank)['emoji']
-                    msg += f"\n\n🎊 **RANK UP!** {new_rank_emoji} You are now a **{new_rank}**!"
-                    msg += f"\n✨ Reward multiplier increased to {rank_system.get_rank_info(new_rank)['multiplier']}x!"
+            new_rank, ranked_up = await rank_system.check_and_update_rank(steam_id)
+            current_rank = new_rank if ranked_up else old_rank
+            
+            rank_info = rank_system.get_rank_info(current_rank)
+            msg = f"🎉 {rank_info['emoji']} **{player_name}** logged in!\n💰 +{total_paldogs} PALDOGS | ✨ +{total_exp} EXP"
+            
+            if leveled_up:
+                msg += f"\n🆙 **LEVEL UP!** You are now level **{new_level}**!"
+            if ranked_up:
+                msg += f"\n🎊 **RANK UP!** You are now a **{new_rank}**!"
+            if streak_msg:
+                msg += f"\n{streak_msg} ({streak} days)"
 
-                # Create Exclusive In-Game Announcement for Arrival using active announcer
-                in_game_broadcast = rank_system.get_join_message(active_announcer, player_name)
-                
-                # If they ranked up, we also add the celebration
-                if ranked_up:
-                    rank_msg = rank_system.get_rank_message(active_announcer, player_name, new_rank)
-                    # We can either append or replace. Let's send a combined or separate broadcast.
-                    # For now, let's append it as a celebratory line.
-                    in_game_broadcast += f" {rank_msg}"
-                
-                return total_reward, msg, in_game_broadcast
-            return 0, "", ""
+            in_game_broadcast = rank_system.get_join_message(active_announcer, player_name)
+            if leveled_up: in_game_broadcast += f" ✨ Level UP! {new_level}!"
+            if ranked_up: in_game_broadcast += f" {rank_system.get_rank_message(active_announcer, player_name, new_rank)}"
+            
+            return total_paldogs, msg, in_game_broadcast
         
         elif activity_type == 'logout':
             await db.record_logout(steam_id)
@@ -265,57 +249,79 @@ class PalDefenderLogParser:
         
         elif activity_type == 'building':
             await db.add_activity(steam_id, 'building', 1)
-            total_reward = await self.apply_rank_multiplier(steam_id, activity['reward'])
-            await db.add_palmarks(steam_id, total_reward, f"Built {activity['building']}")
+            p_base = activity['reward']['paldogs']
+            e_base = activity['reward']['exp']
+            total_paldogs = await self.apply_rank_multiplier(steam_id, p_base)
+            total_exp = e_base
             
-            # Check for real-time rank up
+            await db.add_palmarks(steam_id, total_paldogs, f"Built {activity['building']}")
+            leveled_up, new_level = await db.add_experience(steam_id, total_exp)
+            
             new_rank, ranked_up = await rank_system.check_and_update_rank(steam_id)
-            if ranked_up:
-                active_announcer = stats.get('active_announcer', 'default') if stats else 'default'
-                new_rank_emoji = rank_system.get_rank_info(new_rank)['emoji']
-                msg = f"🎊 **RANK UP!** {new_rank_emoji} **{player_name}** has reached the rank of **{new_rank}**!"
-                in_game_broadcast = rank_system.get_rank_message(active_announcer, player_name, new_rank)
+            msg = ""
+            in_game_broadcast = ""
             
-            return total_reward, msg, in_game_broadcast
+            if leveled_up or ranked_up:
+                active_announcer = stats.get('active_announcer', 'default') if stats else 'default'
+                rank_info = rank_system.get_rank_info(new_rank if ranked_up else old_rank)
+                if leveled_up: msg += f"🆙 **LEVEL UP!** **{player_name}** is now level **{new_level}**!\n"
+                if ranked_up: 
+                    msg += f"🎊 **RANK UP!** {rank_info['emoji']} **{player_name}** is now a **{new_rank}**!"
+                    in_game_broadcast = rank_system.get_rank_message(active_announcer, player_name, new_rank)
+            
+            return total_paldogs, msg, in_game_broadcast
         
         elif activity_type == 'crafting':
             await db.add_activity(steam_id, 'crafting', 1)
-            total_reward = await self.apply_rank_multiplier(steam_id, activity['reward'])
-            await db.add_palmarks(steam_id, total_reward, f"Crafted {activity['item']}")
+            p_base = activity['reward']['paldogs']
+            e_base = activity['reward']['exp']
+            total_paldogs = await self.apply_rank_multiplier(steam_id, p_base)
+            total_exp = e_base
             
-            # Check for real-time rank up
+            await db.add_palmarks(steam_id, total_paldogs, f"Crafted {activity['item']}")
+            leveled_up, new_level = await db.add_experience(steam_id, total_exp)
+            
             new_rank, ranked_up = await rank_system.check_and_update_rank(steam_id)
-            if ranked_up:
-                new_rank_emoji = rank_system.get_rank_info(new_rank)['emoji']
-                msg = f"🎊 **RANK UP!** {new_rank_emoji} **{player_name}** has reached the rank of **{new_rank}**!"
-                in_game_broadcast = f"🎊 RANK UP! {player_name} is now a {new_rank}!"
-                
-            return total_reward, msg, in_game_broadcast
+            msg = ""
+            if leveled_up: msg += f"🆙 **LEVEL UP! {player_name}** reached Level **{new_level}**!"
+            return total_paldogs, msg, ""
         
         elif activity_type == 'tech':
             await db.add_activity(steam_id, 'tech', 1)
-            total_reward = await self.apply_rank_multiplier(steam_id, activity['reward'])
-            await db.add_palmarks(steam_id, total_reward, f"Unlocked {activity['tech']}")
+            total_paldogs = await self.apply_rank_multiplier(steam_id, activity['reward']['paldogs'])
+            total_exp = activity['reward']['exp']
             
-            # Check for real-time rank up
+            await db.add_palmarks(steam_id, total_paldogs, f"Unlocked {activity['tech']}")
+            leveled_up, new_level = await db.add_experience(steam_id, total_exp)
+            
             new_rank, ranked_up = await rank_system.check_and_update_rank(steam_id)
-            if ranked_up:
-                new_rank_emoji = rank_system.get_rank_info(new_rank)['emoji']
-                msg = f"🎊 **RANK UP!** {new_rank_emoji} **{player_name}** has reached the rank of **{new_rank}**!"
-                in_game_broadcast = f"🎊 RANK UP! {player_name} is now a {new_rank}!"
-                
-            return total_reward, msg, in_game_broadcast
+            msg = ""
+            if leveled_up: msg += f"🆙 **LEVEL UP! {player_name}** reached Level **{new_level}**!"
+            return total_paldogs, msg, ""
         
         elif activity_type == 'chat':
             await db.add_activity(steam_id, 'chat', 1)
+            await db.add_experience(steam_id, self.rewards['chat']['exp'])
             return 0, "", ""
-        
-        return 0, "", ""
+
+        elif activity_type == 'combat':
+            # Award small amount of EXP for combat activity
+            await db.add_experience(steam_id, activity['reward']['exp'])
+            return 0, "", ""
+
+        elif activity_type == 'kill':
+            total_paldogs = await self.apply_rank_multiplier(steam_id, activity['reward']['paldogs'])
+            total_exp = activity['reward']['exp']
+            await db.add_palmarks(steam_id, total_paldogs, f"Killed {activity['target']}")
+            leveled_up, new_level = await db.add_experience(steam_id, total_exp)
+            msg = ""
+            if leveled_up: msg = f"🆙 **LEVEL UP! {player_name}** reached Level **{new_level}**!"
+            return total_paldogs, msg, ""
         
         return 0, "", ""
     
-    def tail_log_file(self, log_path: str, callback=None):
-        """Tail a log file and process new lines"""
+    async def tail_log_file(self, log_path: str, callback=None):
+        """Tail a log file and process new lines (Async)"""
         if not os.path.exists(log_path):
             print(f"⚠️ Log file not found: {log_path}")
             return
@@ -331,14 +337,13 @@ class PalDefenderLogParser:
                     activity = self.parse_line(line, str(line_hash))
                     
                     if activity:
-                        reward, message = self.process_activity(activity)
+                        reward, message, broadcast = await self.process_activity(activity)
                         
                         if callback and message:
                             callback(activity, reward, message)
                 else:
                     # No new line, wait a bit
-                    import time
-                    time.sleep(0.1)
+                    await asyncio.sleep(0.1)
 
 
 # Global instance

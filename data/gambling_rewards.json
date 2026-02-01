@@ -1,0 +1,65 @@
+{
+    "roulette": [
+        {
+            "id": "PalSphere",
+            "name": "Pal Sphere",
+            "amount": 5,
+            "weight": 50
+        },
+        {
+            "id": "PalSphere_Mega",
+            "name": "Mega Sphere",
+            "amount": 3,
+            "weight": 28
+        },
+        {
+            "id": "PalSphere_Giga",
+            "name": "Giga Sphere",
+            "amount": 2,
+            "weight": 14
+        },
+        {
+            "id": "MissileBullet",
+            "name": "Guided Missile Ammo",
+            "amount": 2,
+            "weight": 4
+        },
+        {
+            "id": "ElectricOrgan",
+            "name": "Electric Organ",
+            "amount": 10,
+            "weight": 8
+        },
+        {
+            "id": "PAL_Growth_Stone_S",
+            "name": "Small Pal Growth Stone",
+            "amount": 5,
+            "weight": 10
+        },
+        {
+            "id": "PAL_Growth_Stone_M",
+            "name": "Medium Pal Growth Stone",
+            "amount": 3,
+            "weight": 6
+        },
+        {
+            "id": "PAL_Growth_Stone_L",
+            "name": "Large Pal Growth Stone",
+            "amount": 1,
+            "weight": 2
+        },
+        {
+            "id": "PalSphere_Master",
+            "name": "Master Sphere",
+            "amount": 1,
+            "weight": 0.6
+        },
+        {
+            "id": "AncientParts2",
+            "name": "Ancient Parts",
+            "amount": 10,
+            "weight": 0.15
+        }
+    ],
+    "win_chance": 0.7
+}

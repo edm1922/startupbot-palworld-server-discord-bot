@@ -35,6 +35,8 @@ class PlayerStatsDB:
                     player_name TEXT NOT NULL,
                     discord_id TEXT,
                     rank TEXT DEFAULT 'Trainer',
+                    level INTEGER DEFAULT 1,
+                    experience INTEGER DEFAULT 0,
                     palmarks INTEGER DEFAULT 0,
                     total_playtime INTEGER DEFAULT 0,
                     first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -42,6 +44,20 @@ class PlayerStatsDB:
                     login_streak INTEGER DEFAULT 0,
                     last_login_date DATE,
                     active_announcer TEXT DEFAULT 'default'
+                )
+            ''')
+            
+            # Player Inventory (for won items not yet claimed)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS player_inventory (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    steam_id TEXT NOT NULL,
+                    item_id TEXT NOT NULL,
+                    amount INTEGER DEFAULT 1,
+                    source TEXT,
+                    won_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    claimed INTEGER DEFAULT 0,
+                    FOREIGN KEY (steam_id) REFERENCES players(steam_id)
                 )
             ''')
             
@@ -126,6 +142,22 @@ class PlayerStatsDB:
                     print("🔄 Migrated database: Added active_announcer to players")
                 except Exception as e:
                     print(f"[ERROR] Migration error (announcer): {e}")
+
+            # Migration: Add level and experience columns if not exists
+            cursor.execute("PRAGMA table_info(players)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'level' not in columns:
+                try:
+                    cursor.execute("ALTER TABLE players ADD COLUMN level INTEGER DEFAULT 1")
+                    print("🔄 Migrated database: Added level to players")
+                except Exception as e:
+                    print(f"[ERROR] Migration error (level): {e}")
+            if 'experience' not in columns:
+                try:
+                    cursor.execute("ALTER TABLE players ADD COLUMN experience INTEGER DEFAULT 0")
+                    print("🔄 Migrated database: Added experience to players")
+                except Exception as e:
+                    print(f"[ERROR] Migration error (experience): {e}")
 
             conn.commit()
             conn.close()
@@ -572,8 +604,8 @@ class PlayerStatsDB:
             conn = self.get_connection()
             cursor = conn.cursor()
             
-            # Reset PALDOGS and Rank
-            cursor.execute("UPDATE players SET palmarks = 0, rank = 'Trainer'")
+            # Reset PALDOGS, Rank, Level, and EXP
+            cursor.execute("UPDATE players SET palmarks = 0, rank = 'Trainer', level = 1, experience = 0")
             
             # Clear rewards history to be consistent
             cursor.execute("DELETE FROM reward_history")
@@ -581,9 +613,12 @@ class PlayerStatsDB:
             # Clear daily stats to reset leaderboards
             cursor.execute("DELETE FROM daily_stats")
             
+            # Clear virtual inventory if you want total purge
+            cursor.execute("DELETE FROM player_inventory")
+            
             conn.commit()
             conn.close()
-            print("🚨 [DATABASE] ALL PLAYER PROGRESSION RESET (PALDOGS=0, Rank=Trainer)")
+            print("🚨 [DATABASE] ALL PLAYER PROGRESSION RESET (PALDOGS=0, Rank=Trainer, Level=1, EXP=0)")
 
     async def update_active_announcer(self, steam_id: str, announcer_id: str):
         """Update player's active announcer pack (Async)"""
@@ -597,6 +632,130 @@ class PlayerStatsDB:
             cursor.execute("UPDATE players SET active_announcer = ? WHERE steam_id = ?", (announcer_id, steam_id))
             conn.commit()
             conn.close()
+
+    async def add_experience(self, steam_id: str, amount: int):
+        """Add experience to player and handle leveling (Async)"""
+        return await asyncio.to_thread(self._add_experience, steam_id, amount)
+
+    def _add_experience(self, steam_id: str, amount: int):
+        """Add experience to player and handle leveling (Internal)"""
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # 1. Add EXP
+            cursor.execute("UPDATE players SET experience = experience + ? WHERE steam_id = ?", (amount, steam_id))
+            
+            # 2. Check for level up
+            cursor.execute("SELECT experience, level FROM players WHERE steam_id = ?", (steam_id,))
+            row = cursor.fetchone()
+            if not row:
+                conn.close()
+                return False, 0
+            
+            current_exp = row['experience']
+            current_level = row['level']
+            
+            # Simple level formula: level * level * 100
+            new_level = current_level
+            while current_exp >= (new_level * new_level * 100):
+                new_level += 1
+            
+            leveled_up = False
+            if new_level > current_level:
+                cursor.execute("UPDATE players SET level = ? WHERE steam_id = ?", (new_level, steam_id))
+                leveled_up = True
+            
+            conn.commit()
+            conn.close()
+            return leveled_up, new_level
+
+    async def add_to_inventory(self, steam_id: str, item_id: str, amount: int, source: str):
+        """Add item to player's virtual inventory (Async)"""
+        await asyncio.to_thread(self._add_to_inventory, steam_id, item_id, amount, source)
+
+    def _add_to_inventory(self, steam_id: str, item_id: str, amount: int, source: str):
+        """Add item to player's virtual inventory (Internal)"""
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO player_inventory (steam_id, item_id, amount, source) VALUES (?, ?, ?, ?)",
+                (steam_id, item_id, amount, source)
+            )
+            conn.commit()
+            conn.close()
+
+    async def get_unclaimed_items(self, discord_id: int):
+        """Get all unclaimed items for a player (Async)"""
+        return await asyncio.to_thread(self._get_unclaimed_items, discord_id)
+
+    def _get_unclaimed_items(self, discord_id: int):
+        """Get all unclaimed items for a player (Internal)"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT inv.* 
+            FROM player_inventory inv
+            JOIN players p ON inv.steam_id = p.steam_id
+            WHERE p.discord_id = ? AND inv.claimed = 0
+        ''', (str(discord_id),))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    async def mark_item_claimed(self, item_db_id: int):
+        """Mark an item in virtual inventory as claimed (Async)"""
+        await asyncio.to_thread(self._mark_item_claimed, item_db_id)
+
+    def _mark_item_claimed(self, item_db_id: int):
+        """Mark an item in virtual inventory as claimed (Internal)"""
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE player_inventory SET claimed = 1 WHERE id = ?", (item_db_id,))
+            conn.commit()
+            conn.close()
+
+    async def add_palmarks_to_all(self, amount: int, reason: str = ""):
+        """Add PALDOGS to ALL registered players (Async)"""
+        await asyncio.to_thread(self._add_palmarks_to_all, amount, reason)
+
+    def _add_palmarks_to_all(self, amount: int, reason: str = ""):
+        """Add PALDOGS to ALL registered players (Internal)"""
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Update all players
+            cursor.execute("UPDATE players SET palmarks = palmarks + ?", (amount,))
+            
+            # Optional: We could get all steam_ids to update history, 
+            # but for a massive gift, we might just update players table for speed.
+            # Let's record it in history for everyone so they see it in logs if needed.
+            cursor.execute("SELECT steam_id FROM players")
+            all_players = cursor.fetchall()
+            
+            today = datetime.now().date().isoformat()
+            
+            for (steam_id,) in all_players:
+                # History entries
+                cursor.execute('''
+                    INSERT INTO reward_history (steam_id, reward_type, amount, description)
+                    VALUES (?, 'paldogs', ?, ?)
+                ''', (steam_id, amount, reason))
+                
+                # Daily stats
+                cursor.execute('''
+                    INSERT INTO daily_stats (steam_id, date, palmarks_earned)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(steam_id, date) DO UPDATE SET
+                        palmarks_earned = palmarks_earned + excluded.palmarks_earned
+                ''', (steam_id, today, amount))
+            
+            conn.commit()
+            conn.close()
+            print(f"💰 [DATABASE] GAVE {amount} PALDOGS TO ALL {len(all_players)} PLAYERS")
 
 # Global instance
 db = PlayerStatsDB()

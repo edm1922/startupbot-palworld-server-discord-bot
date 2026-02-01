@@ -147,6 +147,34 @@ class RankSystem:
         
         return current_rank, False
     
+    def get_level_exp(self, level: int) -> int:
+        """Calculate EXP required for a specific level"""
+        return level * level * 100
+
+    async def get_progress_to_next_rank(self, steam_id: str) -> Optional[Dict]:
+        stats = await db.get_player_stats(steam_id)
+        if not stats: return None
+        
+        current_level = stats.get('level', 1)
+        current_exp = stats.get('experience', 0)
+        
+        required_exp = self.get_level_exp(current_level)
+        prev_level_exp = self.get_level_exp(current_level - 1) if current_level > 1 else 0
+        
+        # Calculate percentage within the current level
+        exp_in_level = current_exp - prev_level_exp
+        needed_in_level = required_exp - prev_level_exp
+        
+        percentage = min(100, int((exp_in_level / needed_in_level) * 100)) if needed_in_level > 0 else 100
+        
+        return {
+            'level': current_level,
+            'experience': current_exp,
+            'required_exp': required_exp,
+            'percentage': percentage,
+            'is_max_rank': False # Levels are infinite for now
+        }
+    
     def get_daily_rewards(self, rank: str, streak: int) -> Dict:
         rank_data = self.ranks.get(rank, self.ranks['Trainer'])
         rewards = {
@@ -176,20 +204,6 @@ class RankSystem:
         except ValueError: pass
         return None
 
-    async def get_progress_to_next_rank(self, steam_id: str) -> Optional[Dict]:
-        stats = await db.get_player_stats(steam_id)
-        if not stats: return None
-        
-        current_rank = stats.get('rank', 'Trainer')
-        palmarks = stats.get('palmarks', 0)
-        
-        next_rank_info = self.get_next_rank_info(current_rank)
-        if not next_rank_info:
-            return {'current_rank': current_rank, 'next_rank': None, 'current_palmarks': palmarks, 'percentage': 100, 'is_max_rank': True}
-        
-        required = next_rank_info['required_palmarks']
-        percentage = min(100, int((palmarks / required) * 100)) if required > 0 else 100
-        
         return {
             'current_rank': current_rank,
             'next_rank': next_rank_info['name'],
@@ -198,6 +212,13 @@ class RankSystem:
             'percentage': percentage,
             'is_max_rank': False
         }
+    
+    def get_rank_from_exp(self, exp: int) -> str:
+        """Determine rank based on total EXP if desired (currently still using palmarks in logic above)"""
+        # For now, we are keeping the user's preference of 'Rank' being a separate tier, 
+        # but we could link it here if they wanted.
+        return self.get_rank_from_palmarks(exp // 10) # Example scaling 10 exp = 1 palmark equivalent
+
 
     # --- ANNOUNCER PACK LOGIC ---
     def get_join_message(self, announcer_id: str, player_name: str) -> str:

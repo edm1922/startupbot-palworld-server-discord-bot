@@ -15,9 +15,11 @@ class PlayerFeatures(commands.Cog):
             "**/palhelp** - Show this help message\n"
             "**/players** - Show current players online\n"
             "**/serverinfo** - Show detailed server information\n"
-            "**/profile** - View your stats, rank and balance\n"
-            "**/balance** - Quickly check your PALDOGS balance\n"
+            "**/profile** - View your stats, rank, level and balance\n"
+            "**/balance** - Quickly check your PALDOGS & EXP\n"
             "**/shop** - Open the PALDOGS Exchange shop\n"
+            "**/gamble roulette** - Bet to win items!\n"
+            "**/inventory** - Claim your winnings\n"
             "**/link** - Link your account to SteamID\n"
             "**/server_controls** - Admin control panel\n"
             "**/config** - Admin configuration"
@@ -50,6 +52,8 @@ class PlayerFeatures(commands.Cog):
 
         pm = stats.get('palmarks', 0)
         rank = stats.get('rank', 'Trainer')
+        level = stats.get('level', 1)
+        exp = stats.get('experience', 0)
         announcer_id = stats.get('active_announcer', 'default')
         from cogs.rank_system import rank_system
         announcer_name = rank_system.announcer_packs.get(announcer_id, {}).get('name', 'Default')
@@ -59,17 +63,18 @@ class PlayerFeatures(commands.Cog):
         
         embed = nextcord.Embed(title=f"👤 {stats['player_name']}'s Profile", color=rank_system.get_rank_info(rank).get('color', 0x00ADD8))
         embed.set_thumbnail(url=target_user.display_avatar.url)
-        embed.add_field(name="💰 PALDOGS", value=f"**{pm:,} PALDOGS**", inline=True)
+        embed.add_field(name="💰 PALDOGS", value=f"**{pm:,}**", inline=True)
+        embed.add_field(name="✨ Level", value=f"**Lv.{level}**", inline=True)
         embed.add_field(name="🏆 Rank", value=f"**{rank}**", inline=True)
         embed.add_field(name="📣 Announcer", value=f"**{announcer_name}**", inline=True)
         
-        if progress and not progress['is_max_rank']:
+        if progress:
             percent = progress['percentage']
             filled = int(percent / 10)
             bar = "🟩" * filled + "⬛" * (10 - filled)
             embed.add_field(
-                name=f"📈 Next Rank: {progress['next_rank']}", 
-                value=f"{bar} **{percent}%**\n({pm:,} / {progress['required_palmarks']:,} PALDOGS)", 
+                name=f"📊 Level Progress ({percent}%)", 
+                value=f"{bar}\nEXP: **{exp:,}** / **{progress['required_exp']:,}**", 
                 inline=False
             )
         elif progress and progress['is_max_rank']:
@@ -83,7 +88,10 @@ class PlayerFeatures(commands.Cog):
         if not stats:
             await interaction.response.send_message("❌ Account not linked.", ephemeral=True)
             return
-        await interaction.response.send_message(f"💰 Balance: **{stats.get('palmarks', 0):,} PALDOGS**", ephemeral=True)
+        embed = nextcord.Embed(title="💰 Your Balance", color=0x2ecc71)
+        embed.add_field(name="PALDOGS", value=f"**{stats.get('palmarks', 0):,}**", inline=True)
+        embed.add_field(name="Experience", value=f"**{stats.get('experience', 0):,} EXP** (Lv.{stats.get('level', 1)})", inline=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @nextcord.slash_command(description="Open Shop")
     async def shop(self, interaction: nextcord.Interaction):

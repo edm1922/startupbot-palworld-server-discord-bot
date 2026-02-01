@@ -32,7 +32,23 @@ class ShopAdminCog(commands.Cog):
             
         await interaction.response.defer(ephemeral=True)
         await db.reset_all_progression()
-        await interaction.followup.send("🚨 **DATABASE PURGED.** All players have been reset to Trainer with 0 PALDOGS.", ephemeral=True)
+        await interaction.followup.send("🚨 **DATABASE PURGED.** All players have been reset to Level 1, 0 EXP, and 0 PALDOGS.", ephemeral=True)
+
+    @paldog_admin.subcommand(name="give_all", description="🎁 Give PALDOGS to every registered player")
+    async def give_all(
+        self,
+        interaction: Interaction,
+        amount: int = nextcord.SlashOption(description="Amount of PALDOGS to give", min_value=1),
+        reason: str = nextcord.SlashOption(description="Reason for the gift", default="Admin Gift")
+    ):
+        if not self.is_admin(interaction):
+            await interaction.response.send_message("❌ Permission denied.", ephemeral=True)
+            return
+            
+        await interaction.response.defer(ephemeral=True)
+        await db.add_palmarks_to_all(amount, reason)
+        await interaction.followup.send(f"✅ Successfully gave **{amount:,} PALDOGS** to all players!\nReason: *{reason}*", ephemeral=False)
+
 
     @paldog_admin.subcommand(name="set_announcer_price", description="Update the price of an announcer pack")
     async def set_announcer_price(

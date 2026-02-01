@@ -108,25 +108,24 @@ class LiveStatsDisplay:
                     dc = player['palmarks']
                     bar = self.create_progress_bar(dc, max_palmarks, 8)
                     
-                    # Find player by name to get steam_id
+                    # Find player by name to get steam_id and other stats
                     stats = await db.get_player_stats_by_name(player_name)
-                    rank_progress = ""
+                    lvl_info = ""
                     
                     if stats:
+                        level = stats.get('level', 1)
                         progress = await rank_system.get_progress_to_next_rank(stats['steam_id'])
-                        if progress and not progress.get('is_max_rank'):
-                            next_rank = progress['next_rank']
+                        
+                        if progress:
                             percentage = progress['percentage']
-                            required = progress['required_palmarks']
-                            
-                            # Create mini progress bar for rank
-                            rank_bar = self.create_progress_bar(percentage, 100, 6)
-                            next_emoji = self.get_rank_emoji(next_rank)
-                            rank_progress = f"\n    `{rank_bar}` {percentage}% → {next_emoji} {next_rank} ({required:,} PALDOGS)"
+                            # Create mini progress bar for Level
+                            lvl_bar = self.create_progress_bar(percentage, 100, 6)
+                            lvl_info = f"\n    `{lvl_bar}` Lv.{level} ({percentage}% to Lv.{level+1})"
                     
+                    rank_name = player.get('rank', 'Trainer')
                     leaderboard_lines.append(
-                        f"{medal} {rank_emoji} **{player_name}**\n"
-                        f"    `{bar}` {dc:,} PALDOGS{rank_progress}"
+                        f"{medal} {rank_emoji} **{player_name}** (`{rank_name}`)\n"
+                        f"    `{bar}` {dc:,} PALDOGS{lvl_info}"
                     )
             
             leaderboard_text = "\n".join(leaderboard_lines) if leaderboard_lines else "```No players yet```"
