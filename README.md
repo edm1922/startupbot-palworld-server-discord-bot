@@ -4,6 +4,7 @@ A Discord bot for managing Palworld Dedicated Servers. Features include server m
 
 ## Core Features
 
+- **Gambling System**: Play Casino games like Roulette and Blackjack to win PALDOGS and items.
 - **Giveaway System**: Create giveaways for Kits or Pals. Winners can claim rewards when online.
 - **Economy & Ranks**: Earn PALDOGS currency and progress through ranks (Trainer, Gym Leader, Champion).
 - **Live Stats**: Automatic updates for server status, player counts, and system performance.
@@ -19,10 +20,12 @@ A Discord bot for managing Palworld Dedicated Servers. Features include server m
 | :--- | :--- |
 | `/palhelp` | Show all available commands |
 | `/profile` | View stats, rank, and balance |
+| `/gamble` | Access Casino games (Roulette, Blackjack) |
 | `/shop` | Access the PALDOGS Exchange shop |
 | `/balance` | Check PALDOGS balance |
 | `/link` | Link Discord to SteamID |
 | `/players` | View online players |
+| `/inventory` | View and claim your won items |
 | `/serverinfo` | Show server technical info |
 
 ### Admin Commands
@@ -31,6 +34,8 @@ A Discord bot for managing Palworld Dedicated Servers. Features include server m
 | `/config` | Open the configuration hub |
 | `/setup_channels` | Configure bot channels |
 | `/server_controls` | Open the server control panel |
+| `/gamble setup_roulette` | Initialize the Roulette table |
+| `/gamble setup_blackjack` | Initialize the Blackjack UI |
 | `/giveaway create` | Create a new giveaway |
 | `/kit` | Manage item kits |
 | `/pal_cage` | Manage Pal data |
