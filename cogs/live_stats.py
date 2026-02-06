@@ -32,12 +32,12 @@ class LiveStatsDisplay:
         return "█" * filled + "░" * (length - filled)
     
     async def create_stats_embed(self) -> nextcord.Embed:
-        """Create premium statistics embed with visual elements"""
-        # Fetch a larger pool for the leaderboard and filter out max rank (Champion)
-        leaderboard_raw = await db.get_leaderboard('palmarks', limit=20)
+        """Create an ultra-minimalist, high-end dashboard embed"""
+        # Fetch leaderboard data
+        leaderboard_raw = await db.get_leaderboard('palmarks', limit=10)
         leaderboard = [p for p in leaderboard_raw if p.get('rank') != 'Champion'][:5]
         
-        # Fetch current online players from REST API
+        # Fetch current online players
         current_players = []
         player_count = 0
         if rest_api.is_configured():
@@ -46,116 +46,83 @@ class LiveStatsDisplay:
                 current_players = player_data.get('players', [])
                 player_count = len(current_players)
         
-        # Get current server state
+        # Get server state
         server_state = get_server_state()
-        
-        # Map server state to status text and color
-        state_mapping = {
-            ServerState.OFFLINE: ("OFFLINE", 0xFF0000),
-            ServerState.STARTING: ("STARTING", 0xFFFF00),
-            ServerState.ONLINE: ("ONLINE", 0x00FF00),
-            ServerState.STOPPING: ("STOPPING", 0xFF8800)
+        state_info = {
+            ServerState.OFFLINE: ("OFFLINE", 0xFF4B2B, "🔴", "31", "41"),
+            ServerState.STARTING: ("STARTING", 0xFFA500, "🟠", "33", "43"),
+            ServerState.ONLINE: ("ONLINE", 0x33FF33, "🟢", "32", "42"),
+            ServerState.STOPPING: ("STOPPING", 0xFF4B2B, "🔴", "31", "41")
         }
+        status_text, color, dot, fg, bg = state_info.get(server_state, ("UNKNOWN", 0x808080, "⚪", "37", "40"))
         
-        status_text, base_color = state_mapping.get(server_state, ("UNKNOWN", 0x808080))
-        
-        # Override color based on player activity if online
-        if server_state == ServerState.ONLINE:
-            if player_count > 0:
-                color = 0x00FF00  # Green - Players online
-            else:
-                color = 0xFFFF00  # Yellow - Online but no players
-        else:
-            color = base_color
-        
-        # Total players count for header
-        total_players_registered = await db.get_total_players_count()
+        total_players = await db.get_total_players_count()
 
-        # Create embed with dynamic title
-        embed = nextcord.Embed(
-            title="📊 ═══ SERVER LIVE DASHBOARD ═══",
-            description=(
-                f"```ansi\n\u001b[1;36m⚡ Status: {status_text}\u001b[0m\n"
-                f"\u001b[1;32m👥 Population: {player_count} Online • {total_players_registered} Registered\u001b[0m\n```"
-            ),
-            color=color,
-            timestamp=datetime.now()
-        )
+        # Build Title & Description
+        embed = nextcord.Embed(title="Palworld • Server Dashboard", color=color, timestamp=datetime.now())
         
-        # Current Players Section
+        # Top Note (Online Players)
         if player_count > 0:
-            player_entries = []
-            for p in current_players[:15]:
-                name = p.get('name', 'Unknown')
-                # Add crown emoji for MAX rank players (Champion)
-                player_stats = await db.get_player_stats_by_name(name)
-                crown = " 👑" if player_stats and player_stats.get('rank') == 'Champion' else ""
-                player_entries.append(f"🎮 **{name}**{crown}")
-            
-            player_names = "\n".join(player_entries)
-            if len(current_players) > 15:
-                player_names += f"\n*... and {len(current_players) - 15} more*"
-            
-            embed.add_field(
-                name="🟢 ═══ ONLINE PLAYERS ═══",
-                value=player_names,
-                inline=False
-            )
+            names = []
+            for p in current_players:
+                n = p.get('name', 'Unknown')
+                stats = await db.get_player_stats_by_name(n)
+                tag = "⭐" if stats and stats.get('rank') == 'Champion' else ""
+                names.append(f"`{n}{tag}`")
+            embed.description = f"Currently active: {', '.join(names)}"
         else:
-            embed.add_field(
-                name="🛡️ ═══ SERVER STATUS ═══",
-                value="*The world is currently quiet. No players online.*",
-                inline=False
-            )
+            embed.description = "The world is currently quiet. No players online."
+
+        # Two-Column Status Blocks (ANSI)
+        # Status Box
+        status_box = f"```ansi\n\u001b[1;37m\u001b[{bg}m {status_text} \u001b[0m\n```"
+        embed.add_field(name=f"{dot} Status", value=status_box, inline=True)
         
-        # Premium leaderboard with visual ranking and progression
+        # Population Box
+        pop_box = f"```ansi\n\u001b[1;37m\u001b[40m {player_count} Online • {total_players} Registered \u001b[0m\n```"
+        embed.add_field(name="🌐 Population", value=pop_box, inline=True)
+
+        # Leaderboard Section
         if leaderboard:
+            lb_lines = []
             medals = ["🥇", "🥈", "🥉", "🏅", "🎖️"]
-            max_palmarks = leaderboard[0].get('palmarks', 1) if leaderboard else 1
-            
-            leaderboard_lines = []
-            for i, player in enumerate(leaderboard):
-                medal = medals[i] if i < len(medals) else f"`#{i+1}`"
-                rank_emoji = self.get_rank_emoji(player.get('rank', 'Trainer'))
-                player_name = player['player_name']
+            for i, p in enumerate(leaderboard):
+                medal = medals[i]
+                rank_icon = self.get_rank_emoji(p.get('rank', 'Trainer'))
+                p_name = p['player_name']
+                pm = p.get('palmarks', 0)
                 
-                if 'palmarks' in player:
-                    dc = player['palmarks']
-                    bar = self.create_progress_bar(dc, max_palmarks, 8)
-                    
-                    # Find player by name to get steam_id and other stats
-                    stats = await db.get_player_stats_by_name(player_name)
-                    lvl_info = ""
-                    
-                    if stats:
-                        level = stats.get('level', 1)
-                        progress = await rank_system.get_progress_to_next_rank(stats['steam_id'])
-                        
-                        if progress:
-                            percentage = progress['percentage']
-                            # Create mini progress bar for Level
-                            lvl_bar = self.create_progress_bar(percentage, 100, 6)
-                            lvl_info = f"\n    `{lvl_bar}` Lv.{level} ({percentage}% to Lv.{level+1})"
-                    
-                    rank_name = player.get('rank', 'Trainer')
-                    leaderboard_lines.append(
-                        f"{medal} {rank_emoji} **{player_name}** (`{rank_name}`)\n"
-                        f"    `{bar}` {dc:,} PALDOGS{lvl_info}"
-                    )
+                stats = await db.get_player_stats_by_name(p_name)
+                lvl = stats.get('level', 1) if stats else 1
+                
+                # Single-line clean format
+                lb_lines.append(f"{medal} {rank_icon} **{p_name}** • {pm:,} PD • Lv.{lvl}")
             
-            leaderboard_text = "\n".join(leaderboard_lines) if leaderboard_lines else "```No players yet```"
-            
-            embed.add_field(
-                name="🏆 ═══ TOP PLAYERS ═══",
-                value=leaderboard_text,
-                inline=False
-            )
-        
-        # Footer with live indicator
-        embed.set_footer(
-            text="🟢 LIVE • Updates every 5 minutes • Powered by Paltastic",
-            icon_url="https://i.imgur.com/AfFp7pu.png"
-        )
+            embed.add_field(name="= Top Players —", value="\n".join(lb_lines), inline=False)
+
+        # 3. LATEST GLOBAL ACTIVITY (Integrated back into minimalist design)
+        try:
+            with db.lock:
+                conn = db.get_connection()
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT p.player_name, r.reward_type, r.description 
+                    FROM reward_history r
+                    JOIN players p ON r.steam_id = p.steam_id
+                    ORDER BY r.timestamp DESC LIMIT 3
+                ''')
+                activities = cursor.fetchall()
+                if activities:
+                    act_lines = []
+                    for act in activities:
+                        desc = act['description'].replace("Chest Open: ", "opened a ")
+                        act_lines.append(f"🕒 **{act['player_name']}** {desc}")
+                    embed.add_field(name="= Recent Activity —", value="\n".join(act_lines), inline=False)
+        except Exception:
+            pass
+
+        # Footer Fields
+        embed.add_field(name="= Live updates every 5 minutes", value="• Powered by Paltastic", inline=False)
         
         return embed
     

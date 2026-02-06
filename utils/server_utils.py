@@ -137,12 +137,12 @@ async def update_status_channel_name(new_state: ServerState, bot):
         if not channel:
             return
         
-        # Map states to emojis (Refined for a cleaner look)
+        # Map states to emojis (Simplified to avoid rate limits: Red for busy/off, Green for online)
         state_emojis = {
-            ServerState.OFFLINE: "❌",
-            ServerState.STARTING: "🚀",
-            ServerState.ONLINE: "✅",
-            ServerState.STOPPING: "⚠️"
+            ServerState.OFFLINE: "🔴",
+            ServerState.STARTING: "🔴",
+            ServerState.ONLINE: "🟢",
+            ServerState.STOPPING: "🔴"
         }
         
         emoji = state_emojis.get(new_state, "⚪")
@@ -258,7 +258,7 @@ async def stop_server(bot=None, graceful=True):
                 status_channel_id = config.get('status_channel_id', 0)
                 channel = bot.get_channel(status_channel_id)
                 if channel:
-                    embed = nextcord.Embed(title="paltastic", description="🔴 **OFFLINE**\nPalworld", color=0xFF0000)
+                    embed = nextcord.Embed(title="paltastic", description="**OFFLINE**\nPalworld", color=0xFF0000)
                     embed.set_footer(text="powered by Paltastic")
                     try: await channel.send(embed=embed)
                     except: pass
@@ -307,6 +307,15 @@ async def start_server(bot=None):
         else:
             await asyncio.create_subprocess_exec("bash", startup_script, cwd=server_directory)
         
+        # Send STARTING embed immediately
+        status_channel_id = config.get('status_channel_id', 0)
+        channel = bot.get_channel(status_channel_id) if bot else None
+        if channel:
+            embed = nextcord.Embed(title="paltastic", description="**STARTING**\nPalworld", color=0xFF8800)
+            embed.set_footer(text="powered by Paltastic")
+            try: await channel.send(embed=embed)
+            except: pass
+
         # Phase 1: Wait for process to appear
         print("⏳ [STARTUP] Phase 1: Verifying process startup...")
         process_detected = False
@@ -357,7 +366,7 @@ async def start_server(bot=None):
             status_channel_id = config.get('status_channel_id', 0)
             channel = bot.get_channel(status_channel_id)
             if channel:
-                embed = nextcord.Embed(title="paltastic", description="🟢 **ONLINE**\nPalworld", color=0x00FF00)
+                embed = nextcord.Embed(title="paltastic", description="**ONLINE**\nPalworld", color=0x00FF00)
                 embed.set_footer(text="powered by Paltastic")
                 try: await channel.send(embed=embed)
                 except: pass

@@ -49,6 +49,20 @@ class ServerStatusMonitor(commands.Cog):
                 if process_running:
                     logging.info("🟡 Server process detected while state was OFFLINE, transitioning to STARTING")
                     await set_server_state(ServerState.STARTING, self.bot)
+                    
+                    # Send STARTING notification embed
+                    status_channel_id = config.get('status_channel_id', 0)
+                    if status_channel_id:
+                        channel = self.bot.get_channel(status_channel_id)
+                        if channel:
+                            embed = nextcord.Embed(
+                                title="paltastic", 
+                                description="**STARTING**\nServer process detected. Initializing world data...", 
+                                color=0xFF8800
+                            )
+                            embed.set_footer(text="powered by Paltastic")
+                            try: await channel.send(embed=embed)
+                            except: pass
             
             elif current_state == ServerState.STARTING:
                 # Check if process is still running
@@ -69,7 +83,7 @@ class ServerStatusMonitor(commands.Cog):
                                 if channel:
                                     embed = nextcord.Embed(
                                         title="paltastic", 
-                                        description="🟢 **ONLINE**\nPalworld Server is now fully operational!", 
+                                        description="**ONLINE**\nPalworld Server is now fully operational!", 
                                         color=0x00FF00
                                     )
                                     embed.set_footer(text="powered by Paltastic")
@@ -95,7 +109,7 @@ class ServerStatusMonitor(commands.Cog):
                         if channel:
                             embed = nextcord.Embed(
                                 title="paltastic", 
-                                description="🔴 **OFFLINE**\nPalworld Server has stopped", 
+                                description="**OFFLINE**\nPalworld Server has stopped", 
                                 color=0xFF0000
                             )
                             embed.set_footer(text="powered by Paltastic")
