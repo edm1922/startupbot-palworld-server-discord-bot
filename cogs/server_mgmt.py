@@ -22,11 +22,17 @@ class ServerManagement(commands.Cog):
             return True
         return False
 
-    @nextcord.slash_command(description="Show server control panel with buttons")
+    @nextcord.slash_command(
+        name="server_controls", 
+        description="Show server control panel with buttons",
+        default_member_permissions=nextcord.Permissions(administrator=True)
+    )
     async def server_controls(self, interaction: nextcord.Interaction):
         if not self.is_admin(interaction):
             await interaction.response.send_message("❌ You don't have permission to use this command.", ephemeral=True)
             return
+        
+        await interaction.response.defer(ephemeral=True)
         
         embed = nextcord.Embed(
             title="Palworld Server Controls",
@@ -37,7 +43,7 @@ class ServerManagement(commands.Cog):
         # In modular version, we assume ServerControlView is already added to bot in main.py
         # or we can create a fresh one here.
         view = ServerControlView()
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
     @nextcord.slash_command(description="Show current players on the server")
     async def players(self, interaction: nextcord.Interaction):
@@ -82,7 +88,11 @@ class ServerManagement(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @nextcord.slash_command(description="Save the current world state")
+    @nextcord.slash_command(
+        name="saveworld", 
+        description="Save the current world state",
+        default_member_permissions=nextcord.Permissions(administrator=True)
+    )
     async def saveworld(self, interaction: nextcord.Interaction):
         if not self.is_admin(interaction):
             await interaction.response.send_message("❌ Permission denied.", ephemeral=True)
@@ -92,8 +102,9 @@ class ServerManagement(commands.Cog):
             await interaction.response.send_message("❌ REST API required for save.", ephemeral=True)
             return
         
+        await interaction.response.defer(ephemeral=True)
         success = await rest_api.save_world()
-        await interaction.response.send_message("✅ World save command sent." if success else "❌ Save failed.", ephemeral=True)
+        await interaction.followup.send("✅ World save command sent." if success else "❌ Save failed.", ephemeral=True)
 
     @nextcord.slash_command(description="Check time until next auto-restart")
     async def nextrestart(self, interaction: nextcord.Interaction):
@@ -104,13 +115,15 @@ class ServerManagement(commands.Cog):
             await interaction.response.send_message("ℹ️ Auto-restart is disabled.", ephemeral=True)
             return
             
+        await interaction.response.defer(ephemeral=True)
+            
         if start_time is None:
-            await interaction.response.send_message("⏳ Calculating next restart...", ephemeral=True)
+            await interaction.followup.send("⏳ Calculating next restart...", ephemeral=True)
             return
             
         now = datetime.datetime.now()
         if start_time <= now:
-            await interaction.response.send_message("🔄 Restart is imminent!", ephemeral=True)
+            await interaction.followup.send("🔄 Restart is imminent!", ephemeral=True)
             return
             
         diff = start_time - now
@@ -121,9 +134,13 @@ class ServerManagement(commands.Cog):
         embed = nextcord.Embed(title="⏰ Next Auto-Restart", description=f"Restart in **{time_str}**.", color=0xFEE75C)
         embed.add_field(name="Scheduled Time", value=f"<t:{int(start_time.timestamp())}:T>", inline=False)
         
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @nextcord.slash_command(description="Test giving an item via RCON")
+    @nextcord.slash_command(
+        name="test_give_item", 
+        description="Test giving an item via RCON",
+        default_member_permissions=nextcord.Permissions(administrator=True)
+    )
     async def test_give_item(
         self,
         interaction: nextcord.Interaction,
@@ -145,11 +162,11 @@ class ServerManagement(commands.Cog):
             await interaction.followup.send(f"❌ Player '{player_name}' not found.")
             return
         
-        success = await rcon_util.give_item(stats['steam_id'], item_id, amount)
+        success, resp = await rcon_util.give_item(stats['steam_id'], item_id, amount)
         if success:
-            await interaction.followup.send(f"✅ Sent **{amount}x {item_id}** to **{player_name}**.")
+            await interaction.followup.send(f"✅ Sent **{amount}x {item_id}** to **{player_name}**.\nResponse: `{resp}`")
         else:
-            await interaction.followup.send("❌ RCON command failed.")
+            await interaction.followup.send(f"❌ RCON command failed: `{resp}`")
 
     @test_give_item.on_autocomplete("player_name")
     async def player_autocomplete(self, interaction: nextcord.Interaction, current: str):

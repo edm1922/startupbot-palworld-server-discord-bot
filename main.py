@@ -11,13 +11,18 @@ from utils.error_handler import setup_logging
 from utils.rest_api import rest_api
 from cogs.views import ServerControlView
 from cogs.shop_system import UnifiedShopView, ShopView
+from cogs.skin_shop import UnifiedSkinShopView
 from cogs.live_stats import LiveStatsDisplay
 from cogs.giveaway import GiveawayJoinView, GiveawayClaimView
+from cogs.event_system import EventView
+
+from utils.console_utils import disable_quick_edit
 
 # 1. Setup Logging
 setup_logging()
 
-# 2. Enforce Single Instance
+# 2. Disable QuickEdit (Prevents freezing) and Enforce Single Instance
+disable_quick_edit()
 enforce_single_instance(64210)
 
 # 3. Bot Initialization
@@ -41,9 +46,11 @@ async def on_ready():
     # Register Persistent Views
     bot.add_view(ServerControlView())
     bot.add_view(UnifiedShopView(bot))
+    bot.add_view(UnifiedSkinShopView(bot))
     bot.add_view(ShopView(bot))
     bot.add_view(GiveawayJoinView())
     bot.add_view(GiveawayClaimView())
+    bot.add_view(EventView())
     
     await bot.change_presence(activity=nextcord.Game(name="/palhelp"))
     

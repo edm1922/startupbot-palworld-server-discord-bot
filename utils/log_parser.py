@@ -12,14 +12,16 @@ class PalDefenderLogParser:
     def __init__(self):
         # Regex patterns for log parsing
         self.patterns = {
-            'login': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=(.+?)\) has logged in.*"),
-            'logout': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=(.+?)\) has logged out.*"),
-            'building': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) has build an '(.+?)'"),
-            'crafting': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) started crafting '(.+?)'"),
-            'tech': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) unlocking Technology: '(.+?)'"),
-            'chat': re.compile(r"\[.*?\]\[info\] \[Chat::Global\]\['(.+?)' \(UserId=(steam_\d+), IP=.+?\)\](?:\[.*?\])*: (.+)"),
-            'combat': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) dealing damage \((\d+)\) to '(.+?)'"),
-            'kill': re.compile(r"\[.*?\]\[info\] '(.+?)' \(UserId=(steam_\d+), IP=.+?\) killed '(.+?)'")
+            'login': re.compile(r"\[.*?\]\[info\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) has logged in.*"),
+            'logout': re.compile(r"\[.*?\]\[info\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) has logged out.*"),
+            'building': re.compile(r"\[.*?\]\[info\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) (?:has )?buil[td] an?\s*'(?P<item>.+?)'"),
+            'crafting': re.compile(r"\[.*?\]\[info\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) (?:has )?(?:started )?crafting (?:(?P<qty>\d+)x\s*)?'(?P<item>.+?)'"),
+            'tech': re.compile(r"\[.*?\]\[info\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) unlocking Technology: '(?P<item>.+?)'"),
+            'chat': re.compile(r"\[.*?\]\[info\] \[Chat::(?P<type>.*?)\].*?\['(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\)\](?:\[.*?\])*: (?P<msg>.+)"),
+            'combat': re.compile(r"\[.*?\]\[info\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) dealing damage \((?P<dmg>\d+)\) to '(?P<tar>.+?)'"),
+            'kill': re.compile(r"\[.*?\]\[info\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) killed '(?P<tar>.+?)'"),
+            'chest': re.compile(r"\[.*?\]\[info\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) (?:has )?(?:opened|opening|looted|looting) '(?P<item>.+?)' at (?P<coords>.+)"),
+            'oil_rig': re.compile(r"\[.*?\]\[info\] \[OilRig\] '(?P<name>.+?)' \(UserId=(?P<sid>steam_\d+), IP=.+?\) has (?P<msg>.+)")
         }
         
         # Reward values (Both PALDOGS and EXP)
@@ -44,6 +46,13 @@ class PalDefenderLogParser:
             'chat': {'paldogs': 1, 'exp': 2},
             'combat': {'paldogs': 0, 'exp': 1}, # 1 exp per damage instance? Maybe too much. Let's say per hit.
             'kill': {'paldogs': 10, 'exp': 50},
+            'oil_rig': {
+                'lvl60': {'paldogs': 15000, 'exp': 5000},
+                'lvl55': {'paldogs': 10000, 'exp': 3500},
+                'lvl30': {'paldogs': 5000, 'exp': 2000},
+                'chopper': {'paldogs': 25000, 'exp': 10000},
+                'default': {'paldogs': 5000, 'exp': 2000}
+            },
             'playtime_per_hour': {'paldogs': 10, 'exp': 100},
             'daily_login': {'paldogs': 25, 'exp': 100}
         }
@@ -93,25 +102,26 @@ class PalDefenderLogParser:
                     self.processed_lines.add(line_hash)
                 
                 if activity_type == 'login':
-                    player_name, steam_id, ip = match.groups()
+                    player_name, steam_id = match.group('name'), match.group('sid')
                     return {
                         'type': 'login',
                         'player_name': player_name,
                         'steam_id': steam_id,
-                        'ip': ip
+                        'ip': 'hidden'
                     }
                 
                 elif activity_type == 'logout':
-                    player_name, steam_id, ip = match.groups()
+                    player_name, steam_id = match.group('name'), match.group('sid')
                     return {
                         'type': 'logout',
                         'player_name': player_name,
                         'steam_id': steam_id,
-                        'ip': ip
+                        'ip': 'hidden'
                     }
                 
                 elif activity_type == 'building':
-                    player_name, steam_id, building = match.groups()
+                    player_name, steam_id = match.group('name'), match.group('sid')
+                    building = match.group('item').strip()
                     reward = self.get_building_reward(building)
                     return {
                         'type': 'building',
@@ -122,18 +132,31 @@ class PalDefenderLogParser:
                     }
                 
                 elif activity_type == 'crafting':
-                    player_name, steam_id, item = match.groups()
-                    reward = self.get_crafting_reward(item)
+                    player_name, steam_id = match.group('name'), match.group('sid')
+                    item = match.group('item').strip()
+                    # Detect qty if group exists and is not None
+                    qty = 1
+                    try:
+                        gd = match.groupdict()
+                        if gd.get('qty'): qty = int(gd['qty'])
+                    except: pass
+                    
+                    reward = self.get_crafting_reward(item).copy()
+                    if qty > 1:
+                        reward['paldogs'] *= qty
+                        reward['exp'] *= qty
+                        
                     return {
                         'type': 'crafting',
                         'player_name': player_name,
                         'steam_id': steam_id,
                         'item': item,
+                        'qty': qty,
                         'reward': reward
                     }
                 
                 elif activity_type == 'tech':
-                    player_name, steam_id, tech = match.groups()
+                    player_name, steam_id, tech = match.group('name'), match.group('sid'), match.group('item')
                     return {
                         'type': 'tech',
                         'player_name': player_name,
@@ -143,7 +166,7 @@ class PalDefenderLogParser:
                     }
                 
                 elif activity_type == 'chat':
-                    player_name, steam_id, message = match.groups()
+                    player_name, steam_id, message = match.group('name'), match.group('sid'), match.group('msg')
                     return {
                         'type': 'chat',
                         'player_name': player_name,
@@ -153,7 +176,7 @@ class PalDefenderLogParser:
                     }
 
                 elif activity_type == 'combat':
-                    player_name, steam_id, damage, target = match.groups()
+                    player_name, steam_id, damage, target = match.group('name'), match.group('sid'), match.group('dmg'), match.group('tar')
                     return {
                         'type': 'combat',
                         'player_name': player_name,
@@ -164,13 +187,65 @@ class PalDefenderLogParser:
                     }
 
                 elif activity_type == 'kill':
-                    player_name, steam_id, target = match.groups()
+                    player_name, steam_id, target = match.group('name'), match.group('sid'), match.group('tar')
                     return {
                         'type': 'kill',
                         'player_name': player_name,
                         'steam_id': steam_id,
                         'target': target,
                         'reward': self.rewards['kill']
+                    }
+                
+                elif activity_type == 'chest':
+                    player_name, steam_id, item, coords = match.group('name'), match.group('sid'), match.group('item'), match.group('coords')
+                    
+                    # Normal chest rewards (small)
+                    if "SupplyChest" in item or "Large" in item:
+                        # Fallback for coord-based rig if [OilRig] log missing
+                        is_lvl60 = False
+                        try:
+                            parts = coords.strip().split()
+                            if len(parts) >= 2:
+                                x, y = int(parts[0]), int(parts[1])
+                                if 450 <= x <= 700 and -550 <= y <= -300: is_lvl60 = True
+                        except: pass
+                        
+                        reward = self.rewards['oil_rig']['lvl60'] if is_lvl60 else self.rewards['oil_rig']['default']
+                        return {
+                            'type': 'oil_rig',
+                            'player_name': player_name,
+                            'steam_id': steam_id,
+                            'event_type': 'box',
+                            'lv': 'lvl60' if is_lvl60 else 'default',
+                            'reward': reward
+                        }
+                    return None
+
+                elif activity_type == 'oil_rig':
+                    player_name, steam_id, msg = match.group('name'), match.group('sid'), match.group('msg')
+                    msg_lower = msg.lower()
+                    
+                    is_chopper = "killed the combaticopter" in msg_lower
+                    is_goal = "opened the endgoalbox" in msg_lower or "opened the oilrig" in msg_lower
+                    
+                    if not is_chopper and not is_goal:
+                        return None
+                        
+                    lv = "default"
+                    if "(Lv60)" in msg: lv = "lvl60"
+                    elif "(Lv55)" in msg: lv = "lvl55"
+                    elif "(Lv30)" in msg: lv = "lvl30"
+                    
+                    reward_key = "chopper" if is_chopper else lv
+                    reward = self.rewards['oil_rig'].get(reward_key, self.rewards['oil_rig']['default'])
+                    
+                    return {
+                        'type': 'oil_rig',
+                        'player_name': player_name,
+                        'steam_id': steam_id,
+                        'event_type': 'chopper' if is_chopper else 'box',
+                        'lv': lv,
+                        'reward': reward
                     }
         
         return None
@@ -308,7 +383,6 @@ class PalDefenderLogParser:
             # Award small amount of EXP for combat activity
             await db.add_experience(steam_id, activity['reward']['exp'])
             return 0, "", ""
-
         elif activity_type == 'kill':
             total_paldogs = await self.apply_rank_multiplier(steam_id, activity['reward']['paldogs'])
             total_exp = activity['reward']['exp']
@@ -317,6 +391,42 @@ class PalDefenderLogParser:
             msg = ""
             if leveled_up: msg = f"🆙 **LEVEL UP! {player_name}** reached Level **{new_level}**!"
             return total_paldogs, msg, ""
+        
+        elif activity_type == 'oil_rig':
+            total_paldogs = await self.apply_rank_multiplier(steam_id, activity['reward']['paldogs'])
+            total_exp = activity['reward']['exp']
+            
+            event_type = activity.get('event_type', 'box')
+            lv = activity.get('lv', 'default')
+            
+            if event_type == 'chopper':
+                raid_label = "COMBATICOPTER"
+                activity_desc = "Killed the Combaticopter at Oil Rig"
+                discord_emoji = "🚁"
+                broadcast_prefix = "🚁"
+            else:
+                if lv == 'lvl60': raid_label = "LVL 60 OIL RIG"
+                elif lv == 'lvl55': raid_label = "LVL 55 OIL RIG"
+                elif lv == 'lvl30': raid_label = "LVL 30 OIL RIG"
+                else: raid_label = "OIL RIG"
+                
+                activity_desc = f"Successfully raided {raid_label}"
+                discord_emoji = "⚓"
+                broadcast_prefix = "⚓"
+
+            await db.add_palmarks(steam_id, total_paldogs, activity_desc)
+            leveled_up, new_level = await db.add_experience(steam_id, total_exp)
+            
+            # Discord Message (Rich)
+            verb = "killed the" if event_type == 'chopper' else "successfully raided the"
+            msg = f"{discord_emoji} **{player_name}** has {verb} **{raid_label}**!\n💰 Received **{total_paldogs:,} PALDOGS** and ✨ **{total_exp:,} EXP**!"
+            if leveled_up: msg += f"\n🆙 **LEVEL UP!** Now Level **{new_level}**!"
+            
+            # In-Game Broadcast
+            bc_verb = "killed the" if event_type == 'chopper' else "raided the"
+            broadcast = f"{broadcast_prefix} {player_name} {bc_verb} {raid_label} and earned {total_paldogs:,} PALDOGS!"
+            
+            return total_paldogs, msg, broadcast
         
         return 0, "", ""
     

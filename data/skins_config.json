@@ -1,0 +1,67 @@
+{
+    "skins": {
+        "bellanoir_darkspace_liberostandalone_p": {
+            "name": "Space Bellanoir",
+            "price": 0,
+            "pak_filename": "Bellanoir_DarkSpace_LiberoStandalone_P.pak",
+            "description": "Auto-discovered skin.",
+            "image_url": "",
+            "image_filename": "Bellanoir_DarkSpace_LiberoStandalone_P.png",
+            "download_url": "https://drive.google.com/file/d/1YIvk_TSTIl7XEylWT145ydz2iRU4HWeE/view?usp=sharing"
+        },
+        "cutemikuv2_p": {
+            "name": "Anime Lunaris",
+            "price": 250000,
+            "pak_filename": "CuteMikuV2_P.pak",
+            "description": "Auto-discovered skin.",
+            "image_url": "",
+            "image_filename": "CuteMikuV2_P.png",
+            "download_url": ""
+        },
+        "cybergriffon_cyan_p": {
+            "name": "Cyber punk shadowbeak",
+            "price": 250000,
+            "pak_filename": "Cybergriffon_Cyan_P.pak",
+            "description": "Auto-discovered skin.",
+            "image_url": "",
+            "image_filename": "Cybergriffon_Cyan_P.png",
+            "download_url": ""
+        },
+        "lunaris_deepspace_fasttexture_p": {
+            "name": "Deep space Lunaris",
+            "price": 800000,
+            "pak_filename": "Lunaris_DeepSpace_FastTexture_P.pak",
+            "description": "Auto-discovered skin.",
+            "image_url": "",
+            "image_filename": "Lunaris_DeepSpace_FastTexture_P.png",
+            "download_url": "https://drive.google.com/file/d/12kf6j4XuHh1o7bAJKRIQpIE6VrVYX-g1/view?usp=sharing"
+        },
+        "scarletgriffon_p": {
+            "name": "Scarlet Shadowbeak",
+            "price": 100000,
+            "pak_filename": "ScarletGriffon_P.pak",
+            "description": "Auto-discovered skin.",
+            "image_url": "",
+            "image_filename": "ScarletGriffon_P.png",
+            "download_url": ""
+        },
+        "shadowpurple_p": {
+            "name": "Purple shadowbeak",
+            "price": 10000,
+            "pak_filename": "ShadowPurple_P.pak",
+            "description": "Auto-discovered skin.",
+            "image_url": "",
+            "image_filename": "ShadowPurple_P.png",
+            "download_url": ""
+        },
+        "icehorse_dark_p": {
+            "name": "Frostalion noct rework",
+            "price": 300000,
+            "pak_filename": "IceHorse_Dark_P.pak",
+            "description": "Auto-discovered skin.",
+            "image_url": "",
+            "image_filename": "IceHorse_Dark_P.png",
+            "download_url": "https://drive.google.com/file/d/1Mq0_J4_FNhhorwOy30e7bzsmIGd0vK4c/view?usp=sharing"
+        }
+    }
+}

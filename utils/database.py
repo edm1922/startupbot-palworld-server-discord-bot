@@ -43,7 +43,8 @@ class PlayerStatsDB:
                     last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     login_streak INTEGER DEFAULT 0,
                     last_login_date DATE,
-                    active_announcer TEXT DEFAULT 'default'
+                    active_announcer TEXT DEFAULT 'default',
+                    wheel_level INTEGER DEFAULT 0
                 )
             ''')
             
@@ -55,6 +56,7 @@ class PlayerStatsDB:
                     item_id TEXT NOT NULL,
                     amount INTEGER DEFAULT 1,
                     source TEXT,
+                    type TEXT DEFAULT 'item',
                     won_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     claimed INTEGER DEFAULT 0,
                     FOREIGN KEY (steam_id) REFERENCES players(steam_id)
@@ -108,6 +110,8 @@ class PlayerStatsDB:
                     playtime INTEGER DEFAULT 0,
                     structures_built INTEGER DEFAULT 0,
                     items_crafted INTEGER DEFAULT 0,
+                    chest_rolls INTEGER DEFAULT 0,
+                    wheel_spins INTEGER DEFAULT 0,
                     UNIQUE(steam_id, date),
                     FOREIGN KEY (steam_id) REFERENCES players(steam_id)
                 )
@@ -132,6 +136,18 @@ class PlayerStatsDB:
                     print("🔄 Migrated database: daily_stats.dogcoin_earned -> daily_stats.palmarks_earned")
                 except Exception as e:
                     print(f"[ERROR] Migration error (daily_stats): {e}")
+
+            # Migration: Add chest_rolls and wheel_spins to daily_stats
+            cursor.execute("PRAGMA table_info(daily_stats)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'chest_rolls' not in columns:
+                try:
+                    cursor.execute("ALTER TABLE daily_stats ADD COLUMN chest_rolls INTEGER DEFAULT 0")
+                except: pass
+            if 'wheel_spins' not in columns:
+                try:
+                    cursor.execute("ALTER TABLE daily_stats ADD COLUMN wheel_spins INTEGER DEFAULT 0")
+                except: pass
 
             # Migration: Add active_announcer column if not exists
             cursor.execute("PRAGMA table_info(players)")
@@ -158,6 +174,24 @@ class PlayerStatsDB:
                     print("🔄 Migrated database: Added experience to players")
                 except Exception as e:
                     print(f"[ERROR] Migration error (experience): {e}")
+
+            # Migration: Add wheel_level to players
+            cursor.execute("PRAGMA table_info(players)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'wheel_level' not in columns:
+                try:
+                    cursor.execute("ALTER TABLE players ADD COLUMN wheel_level INTEGER DEFAULT 0")
+                    print("🔄 Migrated database: Added wheel_level to players")
+                except Exception as e:
+                    print(f"[ERROR] Migration error (wheel_level): {e}")
+
+            # Migration: Add chest_level to players
+            if 'chest_level' not in columns:
+                try:
+                    cursor.execute("ALTER TABLE players ADD COLUMN chest_level INTEGER DEFAULT 0")
+                    print("🔄 Migrated database: Added chest_level to players")
+                except Exception as e:
+                    print(f"[ERROR] Migration error (chest_level): {e}")
 
             conn.commit()
             conn.close()
@@ -578,6 +612,58 @@ class PlayerStatsDB:
 
 
 
+
+    async def transfer_paldogs(self, sender_steam_id: str, receiver_steam_id: str, amount: int) -> bool:
+        """Transfer Paldogs from one player to another (Async)"""
+        return await asyncio.to_thread(self._transfer_paldogs, sender_steam_id, receiver_steam_id, amount)
+
+    def _transfer_paldogs(self, sender_steam_id: str, receiver_steam_id: str, amount: int) -> bool:
+        """Transfer Paldogs from one player to another (Internal)"""
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            try:
+                # check sender balance
+                cursor.execute("SELECT palmarks, player_name FROM players WHERE steam_id = ?", (sender_steam_id,))
+                sender = cursor.fetchone()
+                if not sender or sender['palmarks'] < amount:
+                    conn.close()
+                    return False
+                
+                # Check receiver exists
+                cursor.execute("SELECT player_name FROM players WHERE steam_id = ?", (receiver_steam_id,))
+                receiver = cursor.fetchone()
+                if not receiver:
+                    conn.close()
+                    return False
+
+                # Deduct from sender
+                cursor.execute("UPDATE players SET palmarks = palmarks - ? WHERE steam_id = ?", (amount, sender_steam_id))
+                
+                # Add to receiver
+                cursor.execute("UPDATE players SET palmarks = palmarks + ? WHERE steam_id = ?", (amount, receiver_steam_id))
+                
+                # Log transaction
+                cursor.execute('''
+                    INSERT INTO reward_history (steam_id, reward_type, amount, description)
+                    VALUES (?, 'transfer_sent', ?, ?)
+                ''', (sender_steam_id, -amount, f"Transfer to {receiver['player_name']}"))
+                
+                cursor.execute('''
+                    INSERT INTO reward_history (steam_id, reward_type, amount, description)
+                    VALUES (?, 'transfer_received', ?, ?)
+                ''', (receiver_steam_id, amount, f"Transfer from {sender['player_name']}"))
+                
+                conn.commit()
+                return True
+            except Exception as e:
+                print(f"[ERROR] Transfer error: {e}")
+                conn.rollback()
+                return False
+            finally:
+                conn.close()
+
     async def get_player_names_autocomplete(self, current: str) -> List[str]:
         """Get player names for autocomplete (Async)"""
         return await asyncio.to_thread(self._get_player_names_autocomplete, current)
@@ -670,18 +756,25 @@ class PlayerStatsDB:
             conn.close()
             return leveled_up, new_level
 
-    async def add_to_inventory(self, steam_id: str, item_id: str, amount: int, source: str):
+    async def add_to_inventory(self, steam_id: str, item_id: str, amount: int = 1, source: str = "Reward", type: str = "item"):
         """Add item to player's virtual inventory (Async)"""
-        await asyncio.to_thread(self._add_to_inventory, steam_id, item_id, amount, source)
+        await asyncio.to_thread(self._add_to_inventory, steam_id, item_id, amount, source, type)
 
-    def _add_to_inventory(self, steam_id: str, item_id: str, amount: int, source: str):
+    def _add_to_inventory(self, steam_id: str, item_id: str, amount: int, source: str, type: str = "item"):
         """Add item to player's virtual inventory (Internal)"""
         with self.lock:
             conn = self.get_connection()
             cursor = conn.cursor()
+            
+            # Check if column exists (for migration)
+            cursor.execute("PRAGMA table_info(player_inventory)")
+            columns = [c[1] for c in cursor.fetchall()]
+            if 'type' not in columns:
+                cursor.execute("ALTER TABLE player_inventory ADD COLUMN type TEXT DEFAULT 'item'")
+
             cursor.execute(
-                "INSERT INTO player_inventory (steam_id, item_id, amount, source) VALUES (?, ?, ?, ?)",
-                (steam_id, item_id, amount, source)
+                "INSERT INTO player_inventory (steam_id, item_id, amount, source, type) VALUES (?, ?, ?, ?, ?)",
+                (steam_id, item_id, amount, source, type)
             )
             conn.commit()
             conn.close()
@@ -714,6 +807,19 @@ class PlayerStatsDB:
             conn = self.get_connection()
             cursor = conn.cursor()
             cursor.execute("UPDATE player_inventory SET claimed = 1 WHERE id = ?", (item_db_id,))
+            conn.commit()
+            conn.close()
+
+    async def delete_inventory_item(self, item_db_id: int):
+        """Permanently delete an item from virtual inventory (Async)"""
+        await asyncio.to_thread(self._delete_inventory_item, item_db_id)
+
+    def _delete_inventory_item(self, item_db_id: int):
+        """Permanently delete an item from virtual inventory (Internal)"""
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM player_inventory WHERE id = ?", (item_db_id,))
             conn.commit()
             conn.close()
 
@@ -756,6 +862,121 @@ class PlayerStatsDB:
             conn.commit()
             conn.close()
             print(f"💰 [DATABASE] GAVE {amount} PALDOGS TO ALL {len(all_players)} PLAYERS")
+
+    async def get_daily_usage(self, steam_id: str, column: str) -> int:
+        """Get daily usage count (Async)"""
+        return await asyncio.to_thread(self._get_daily_usage, steam_id, column)
+
+    def _get_daily_usage(self, steam_id: str, column: str) -> int:
+        """Get daily usage count (Internal)"""
+        if column not in ['chest_rolls', 'wheel_spins']:
+            return 0
+        
+        today = datetime.now().date().isoformat()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute(f"SELECT {column} FROM daily_stats WHERE steam_id = ? AND date = ?", (steam_id, today))
+        result = cursor.fetchone()
+        conn.close()
+        
+        return result[0] if result else 0
+
+    async def get_wheel_level(self, steam_id: str) -> int:
+        """Get player's current wheel progressive level"""
+        return await asyncio.to_thread(self._get_wheel_level, steam_id)
+
+    def _get_wheel_level(self, steam_id: str) -> int:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT wheel_level FROM players WHERE steam_id = ?", (steam_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return result['wheel_level'] if result else 0
+
+    async def increment_wheel_level(self, steam_id: str):
+        """Increment player's wheel progressive level"""
+        await asyncio.to_thread(self._increment_wheel_level, steam_id)
+
+    def _increment_wheel_level(self, steam_id: str):
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE players SET wheel_level = wheel_level + 1 WHERE steam_id = ?", (steam_id,))
+            conn.commit()
+            conn.close()
+
+    async def reset_wheel_level(self, steam_id: str):
+        """Reset player's wheel progressive level"""
+        await asyncio.to_thread(self._reset_wheel_level, steam_id)
+
+    def _reset_wheel_level(self, steam_id: str):
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE players SET wheel_level = 0 WHERE steam_id = ?", (steam_id,))
+            conn.commit()
+            conn.close()
+    
+    async def get_chest_level(self, steam_id: str) -> int:
+        """Get player's current chest progressive level"""
+        return await asyncio.to_thread(self._get_chest_level, steam_id)
+
+    def _get_chest_level(self, steam_id: str) -> int:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT chest_level FROM players WHERE steam_id = ?", (steam_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return result['chest_level'] if result else 0
+
+    async def increment_chest_level(self, steam_id: str):
+        """Increment player's chest progressive level"""
+        await asyncio.to_thread(self._increment_chest_level, steam_id)
+
+    def _increment_chest_level(self, steam_id: str):
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE players SET chest_level = chest_level + 1 WHERE steam_id = ?", (steam_id,))
+            conn.commit()
+            conn.close()
+
+    async def reset_chest_level(self, steam_id: str):
+        """Reset player's chest progressive level"""
+        await asyncio.to_thread(self._reset_chest_level, steam_id)
+
+    def _reset_chest_level(self, steam_id: str):
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE players SET chest_level = 0 WHERE steam_id = ?", (steam_id,))
+            conn.commit()
+            conn.close()
+
+    async def increment_daily_usage(self, steam_id: str, column: str):
+        """Increment daily usage count (Async)"""
+        await asyncio.to_thread(self._increment_daily_usage, steam_id, column)
+
+    def _increment_daily_usage(self, steam_id: str, column: str):
+        """Increment daily usage count (Internal)"""
+        if column not in ['chest_rolls', 'wheel_spins']:
+            return
+            
+        today = datetime.now().date().isoformat()
+        with self.lock:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(f'''
+                INSERT INTO daily_stats (steam_id, date, {column})
+                VALUES (?, ?, 1)
+                ON CONFLICT(steam_id, date) DO UPDATE SET
+                    {column} = {column} + 1
+            ''', (steam_id, today))
+            
+            conn.commit()
+            conn.close()
 
 # Global instance
 db = PlayerStatsDB()

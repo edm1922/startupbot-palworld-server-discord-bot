@@ -1,7 +1,9 @@
 import nextcord
 from nextcord.ext import commands
 import asyncio
+import json
 import datetime
+import time
 import os
 import psutil
 import re
@@ -12,6 +14,10 @@ from utils.config_manager import config
 from utils.rest_api import rest_api
 from utils.server_utils import is_server_running, start_server, stop_server, restart_server, server_lock
 from utils.database import db
+from utils.rcon_utility import rcon_util
+from cogs.rank_system import rank_system
+from cogs.kit_mgmt import kit_system
+from cogs.pal_system import pal_system
 
 class MonitorRelay(commands.Cog):
     def __init__(self, bot):
@@ -19,6 +25,7 @@ class MonitorRelay(commands.Cog):
         self.running_tasks = {}
         self.next_restart_time = None
         self.restart_enabled = True
+        self.chest_burst_tracker = {} # Track in-game rolls
         self.attempts = {"start": {}, "stop": {}}
         self.MAX_ATTEMPTS = 3
         self.ATTEMPT_RESET_TIME = 86400
@@ -31,6 +38,9 @@ class MonitorRelay(commands.Cog):
         self.last_api_error_time = 0
         self.file_positions = {}
         self.line_buffer = "" # Buffer for partial lines
+        self.roll_lock = asyncio.Lock() # Prevent concurrent in-game RCON rolls
+        self.global_roll_count = 0
+        self.global_cooldown_until = 0
         
         # Pre-compile regex patterns for performance
         self.chat_patterns = [
@@ -157,7 +167,18 @@ class MonitorRelay(commands.Cog):
     async def auto_restart(self):
         while True:
             try:
+                # 1. Immediate check if enabled
+                if not config.get('auto_restart_enabled', True) or not self.restart_enabled:
+                    self.next_restart_time = None
+                    self.bot.next_restart_time = None
+                    await asyncio.sleep(30)
+                    continue
+
                 interval = config.get('restart_interval', 10800)
+                if interval < 600:
+                    logging.warning(f"⚠️ Restart interval ({interval}s) is too short. Defaulting to 10800s (3h).")
+                    interval = 10800
+
                 announcements_str = config.get('restart_announcements', '30,10,5,1')
                 try:
                     announce_times = sorted([int(m.strip()) * 60 for m in announcements_str.split(',') if m.strip().isdigit()], reverse=True)
@@ -173,7 +194,7 @@ class MonitorRelay(commands.Cog):
                 next_interval_seconds = (intervals_passed + 1) * interval
                 target_time = midnight + datetime.timedelta(seconds=next_interval_seconds)
                 
-                if (target_time - now).total_seconds() < countdown_duration:
+                if (target_time - now).total_seconds() < -30: 
                     next_interval_seconds += interval
                     target_time = midnight + datetime.timedelta(seconds=next_interval_seconds)
                 
@@ -181,29 +202,63 @@ class MonitorRelay(commands.Cog):
                 initial_sleep = max(0, time_until_target - countdown_duration)
                 
                 self.next_restart_time = target_time
-                self.bot.next_restart_time = target_time # Sync with bot instance
+                self.bot.next_restart_time = target_time
                 
-                print(f"🚥 Auto-Restart Scheduled for: {target_time} (in {time_until_target/3600:.1f}h)")
-                await asyncio.sleep(initial_sleep)
+                logging.info(f"🚥 Auto-Restart Scheduled for: {target_time} (in {time_until_target:.1f}s)")
                 
+                # Sleep in increments so we can react to toggle changes faster
+                while initial_sleep > 0:
+                    if not config.get('auto_restart_enabled', True): break
+                    sleep_chunk = min(initial_sleep, 60)
+                    await asyncio.sleep(sleep_chunk)
+                    initial_sleep -= sleep_chunk
+
+                # Re-check before starting countdown
                 if not config.get('auto_restart_enabled', True) or not self.restart_enabled or not await is_server_running():
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(10)
                     continue
 
-                if announce_times:
-                    for i, wait_sec in enumerate(announce_times):
-                        mins = wait_sec // 60
-                        msg = f"⚠️ SERVER RESTART IN {mins} MINUTE{'S' if mins != 1 else ''} FOR MAINTENANCE"
-                        if wait_sec < 60: msg = f"⚠️ SERVER RESTART IN {wait_sec} SECONDS"
-                        if rest_api.is_configured(): await rest_api.broadcast_message(msg)
-                        
-                        if i < len(announce_times) - 1:
-                            await asyncio.sleep(wait_sec - announce_times[i+1])
-                        else:
-                            await asyncio.sleep(announce_times[-1])
+                # Smart Countdown Loop
+                now = datetime.datetime.now()
+                remaining_seconds = (target_time - now).total_seconds()
                 
-                async with server_lock:
-                    await restart_server(self.bot, graceful=True)
+                if remaining_seconds > 0:
+                    valid_announcements = [t for t in announce_times if t < remaining_seconds]
+                    
+                    if valid_announcements:
+                        first_wait = remaining_seconds - valid_announcements[0]
+                        if first_wait > 0:
+                            await asyncio.sleep(first_wait)
+                            
+                        for i, wait_sec in enumerate(valid_announcements):
+                            # Mid-countdown check
+                            if not config.get('auto_restart_enabled', True): 
+                                logging.info("🛑 Auto-Restart aborted mid-countdown (Disabled by user).")
+                                break
+
+                            mins = wait_sec // 60
+                            msg = f"⚠️ SERVER RESTART IN {mins} MINUTE{'S' if mins != 1 else ''} FOR MAINTENANCE"
+                            if wait_sec < 60: msg = f"⚠️ SERVER RESTART IN {wait_sec} SECONDS"
+                            
+                            if rest_api.is_configured(): 
+                                await rest_api.broadcast_message(msg)
+                            
+                            if i < len(valid_announcements) - 1:
+                                await asyncio.sleep(wait_sec - valid_announcements[i+1])
+                            else:
+                                await asyncio.sleep(valid_announcements[-1])
+                        
+                        if not config.get('auto_restart_enabled', True):
+                            continue # Skip the actual restart
+                    else:
+                        await asyncio.sleep(remaining_seconds)
+                
+                # Final check
+                if config.get('auto_restart_enabled', True) and self.restart_enabled:
+                    async with server_lock:
+                        await restart_server(self.bot, graceful=True)
+                else:
+                    logging.info("🛑 Auto-Restart aborted last-second (Disabled by user).")
             except Exception as e:
                 logging.error(f"Error in auto_restart: {e}")
                 await asyncio.sleep(60)
@@ -344,6 +399,12 @@ class MonitorRelay(commands.Cog):
                         try:
                             activity = log_parser.parse_line(line, line_hash)
                             if activity:
+                                # Special Case: Chat Command Handling
+                                if activity['type'] == 'chat':
+                                    msg = activity['message'].strip()
+                                    if msg.startswith('/') or msg.startswith('!'):
+                                        asyncio.create_task(self.handle_ingame_command(activity['player_name'], activity['steam_id'], msg))
+                                
                                 reward, d_msg, g_msg = await log_parser.process_activity(activity)
                                 
                                 # Send Discord notification for activity
@@ -408,6 +469,55 @@ class MonitorRelay(commands.Cog):
                 import traceback
                 traceback.print_exc()
             await asyncio.sleep(1)
+
+    async def handle_ingame_command(self, player_name, steam_id, message):
+        content = message.strip()
+        if not content: return
+        
+        parts = content.split()
+        if not parts: return
+        
+        raw_token = parts[0]
+        if not raw_token.startswith('!'):
+            # Ignore anything not starting with ! to avoid mod conflicts
+            return
+
+        cmd = raw_token[1:].lower() # Remove !
+        
+        logging.info(f"🕹️ Command detected from {player_name} ({steam_id}): {cmd}")
+
+        if cmd in ["profile", "p", "stats"]:
+            await self.handle_profile_command(steam_id, player_name)
+        elif cmd in ["balance", "bal", "money", "marks"]:
+            await self.handle_balance_command(steam_id, player_name)
+        # Abolished !roll / !chest roll commands
+
+    async def handle_profile_command(self, steam_id, player_name):
+        stats = await db.get_player_stats(steam_id)
+        if not stats: return
+        
+        rank = stats.get('rank', 'Trainer')
+        level = stats.get('level', 1)
+        pm = stats.get('palmarks', 0)
+        exp = stats.get('experience', 0)
+        
+        # Get progress
+        progress = await rank_system.get_progress_to_next_rank(steam_id)
+        prog_str = ""
+        if progress:
+            prog_str = f" | EXP: {exp:,}/{progress['required_exp']:,} ({progress['percentage']}%)"
+            
+        msg = f"[PROFILE] {player_name} | Rank: {rank} | Level: {level} | PALDOGS: {pm:,}{prog_str}"
+        res = await rcon_util.send_private_message(steam_id, msg)
+        logging.info(f"🕹️ Tell Profile result: {res}")
+
+    async def handle_balance_command(self, steam_id, player_name):
+        stats = await db.get_player_stats(steam_id)
+        if not stats: return
+        pm = stats.get('palmarks', 0)
+        exp = stats.get('experience', 0)
+        msg = f"[BALANCE] {player_name} | PALDOGS: {pm:,} | EXP: {exp:,} (Lv.{stats.get('level', 1)})"
+        await rcon_util.send_private_message(steam_id, msg)
 
 def setup(bot):
     bot.add_cog(MonitorRelay(bot))

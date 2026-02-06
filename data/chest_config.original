@@ -1,0 +1,277 @@
+{
+    "roll_cost": 500,
+    "rates": {
+        "legendary": 1.5,
+        "epic": 8.5,
+        "rare": 25.0,
+        "basic": 65.0
+    },
+    "rewards": {
+        "legendary": [
+            {
+                "type": "pal",
+                "id": "legend1",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "legend2",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "legend3",
+                "amount": 1,
+                "weight": 1.0
+            }
+        ],
+        "epic": [
+            {
+                "type": "pal",
+                "id": "epic1",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "epic2",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "epic3",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "epic4",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "epic5",
+                "amount": 1,
+                "weight": 1.0
+            }
+        ],
+        "rare": [
+            {
+                "type": "pal",
+                "id": "rare1",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare2",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare3",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare4",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare5",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare6",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare7",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare8",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare9",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "rare10",
+                "amount": 1,
+                "weight": 1.0
+            }
+        ],
+        "basic": [
+            {
+                "type": "pal",
+                "id": "basic1",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic2",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic3",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic4",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic5",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic6",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic7",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic8",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic9",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic10",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic11",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic12",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic13",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic14",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic15",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic16",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic17",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic18",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic19",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic20",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic21",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic22",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic23",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic24",
+                "amount": 1,
+                "weight": 1.0
+            },
+            {
+                "type": "pal",
+                "id": "basic25",
+                "amount": 1,
+                "weight": 1.0
+            }
+        ]
+    }
+}

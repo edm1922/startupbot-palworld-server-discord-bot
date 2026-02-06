@@ -1,0 +1,93 @@
+{
+    "wheel": [
+        {
+            "id": "jackprize",
+            "name": "🔥 Shadowbeak (PAL JACKPOT!)",
+            "type": "pal",
+            "amount": 1,
+            "weight": 1,
+            "grand_prize": true
+        },
+        {
+            "id": "midprize",
+            "name": "🐲 Jormuntide Ignis (Legendary Pal)",
+            "type": "pal",
+            "amount": 1,
+            "weight": 1,
+            "grand_prize": true
+        },
+        {
+            "id": "multiplier_2",
+            "name": "✖️ x2 Multiplier (RE-SPIN!)",
+            "type": "multiplier",
+            "amount": 2,
+            "weight": 10
+        },
+        {
+            "id": "multiplier_3",
+            "name": "✖️ x3 Multiplier (RE-SPIN!)",
+            "type": "multiplier",
+            "amount": 3,
+            "weight": 5
+        },
+        {
+            "id": "multiplier_5",
+            "name": "✖️ x5 Multiplier (SUPER RE-SPIN!)",
+            "type": "multiplier",
+            "amount": 5,
+            "weight": 2
+        },
+        {
+            "id": "PALDOGS_JACKPOT",
+            "name": "💰 25,000 PALDOGS",
+            "type": "currency",
+            "amount": 25000,
+            "weight": 5
+        },
+        {
+            "id": "PALDOGS_STASH",
+            "name": "💰 10,000 PALDOGS",
+            "type": "currency",
+            "amount": 10000,
+            "weight": 10
+        },
+        {
+            "id": "EXP_MEGA",
+            "name": "🆙 5,000 EXP Boost",
+            "type": "exp",
+            "amount": 5000,
+            "weight": 15
+        },
+        {
+            "id": "PalSphere_Master",
+            "name": "🔮 Master Exotic",
+            "type": "item",
+            "amount": 5,
+            "weight": 35
+        },
+        {
+            "id": "AncientParts2",
+            "name": "⚙️ Ancient Parts",
+            "type": "item",
+            "amount": 10,
+            "weight": 50
+        },
+        {
+            "id": "PALDOGS_SMALL",
+            "name": "💰 2,500 PALDOGS",
+            "type": "currency",
+            "amount": 2500,
+            "weight": 35
+        },
+        {
+            "id": "PALDOGS_CONSOLATION",
+            "name": "💰 500 PALDOGS",
+            "type": "currency",
+            "amount": 500,
+            "weight": 65
+        }
+    ],
+    "spin_cost": 500,
+    "last_grand_winner": "None",
+    "last_grand_prize": "None"
+}

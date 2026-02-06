@@ -1,0 +1,924 @@
+{
+    "reroll_cost": 100,
+    "tier_costs": {
+        "basic": 500,
+        "rare": 1500,
+        "epic": 5000,
+        "legendary": 20000
+    },
+    "cost_increment": 250,
+    "rates": {
+        "legendary": 1.0,
+        "epic": 2.9,
+        "rare": 17.0,
+        "basic": 80.0
+    },
+    "rewards": {
+        "legendary": [
+            {
+                "type": "pal",
+                "id": "legend1",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Legendary Pal 1"
+            },
+            {
+                "type": "pal",
+                "id": "legend2",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Legendary Pal 2"
+            },
+            {
+                "type": "pal",
+                "id": "legend3",
+                "amount": 1,
+                "weight": 0.5,
+                "name": "legend3"
+            },
+            {
+                "type": "item",
+                "id": "PalSphere_Master",
+                "amount": 25,
+                "weight": 2.5,
+                "name": "Master Pal Spheres x25"
+            },
+            {
+                "type": "item",
+                "id": "PalUpgradeStone3",
+                "amount": 15,
+                "weight": 2.5,
+                "name": "Pal Upgrade Stone III x15"
+            },
+            {
+                "type": "item",
+                "id": "Accessory_AT_3",
+                "amount": 1,
+                "weight": 2.0,
+                "name": "Legendary Attack Accessory"
+            },
+            {
+                "type": "item",
+                "id": "Blueprint_Head017_5",
+                "amount": 1,
+                "weight": 2.0,
+                "name": "Legendary Helmet Blueprint"
+            },
+            {
+                "type": "item",
+                "id": "AncientParts3",
+                "amount": 10,
+                "weight": 3.0,
+                "name": "Ancient Parts III x10"
+            },
+            {
+                "type": "item",
+                "id": "GatlingGun_5",
+                "amount": 1,
+                "weight": 1.5,
+                "name": "Gatling Gun (Tier 5)"
+            },
+            {
+                "type": "currency",
+                "id": "PALDOGS",
+                "amount": 50000,
+                "weight": 4.0,
+                "name": "50,000 PALDOGS"
+            },
+            {
+                "type": "item",
+                "id": "ExpBoost_04",
+                "amount": 5,
+                "weight": 2.5,
+                "name": "Experience Boost IV x5"
+            },
+            {
+                "type": "template_pal",
+                "id": "epic6",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            }
+        ],
+        "epic": [
+            {
+                "type": "pal",
+                "id": "epic1",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Epic Pal 1"
+            },
+            {
+                "type": "pal",
+                "id": "epic2",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Epic Pal 2"
+            },
+            {
+                "type": "pal",
+                "id": "epic3",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Epic Pal 3"
+            },
+            {
+                "type": "pal",
+                "id": "epic4",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Epic Pal 4"
+            },
+            {
+                "type": "pal",
+                "id": "epic5",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Epic Pal 5"
+            },
+            {
+                "type": "item",
+                "id": "PalSphere_Legend",
+                "amount": 10,
+                "weight": 3.0,
+                "name": "Legend Pal Spheres x10"
+            },
+            {
+                "type": "item",
+                "id": "PalUpgradeStone3",
+                "amount": 10,
+                "weight": 3.0,
+                "name": "Pal Upgrade Stone III x10"
+            },
+            {
+                "type": "item",
+                "id": "AssaultRifle_Default5",
+                "amount": 1,
+                "weight": 2.0,
+                "name": "Assault Rifle (Tier 5)"
+            },
+            {
+                "type": "item",
+                "id": "Accessory_HP_3",
+                "amount": 1,
+                "weight": 2.5,
+                "name": "Epic Health Accessory"
+            },
+            {
+                "type": "item",
+                "id": "AncientParts2",
+                "amount": 20,
+                "weight": 3.5,
+                "name": "Ancient Parts II x20"
+            },
+            {
+                "type": "item",
+                "id": "SkillCard_HyperBeam",
+                "amount": 1,
+                "weight": 1.5,
+                "name": "Hyper Beam Skill Card"
+            },
+            {
+                "type": "item",
+                "id": "Blueprint_Head017_5",
+                "amount": 1,
+                "weight": 2.0,
+                "name": "Epic Helmet Blueprint"
+            },
+            {
+                "type": "currency",
+                "id": "PALDOGS",
+                "amount": 25000,
+                "weight": 5.0,
+                "name": "25,000 PALDOGS"
+            },
+            {
+                "type": "item",
+                "id": "ExpBoost_03",
+                "amount": 8,
+                "weight": 3.5,
+                "name": "Experience Boost III x8"
+            },
+            {
+                "type": "item",
+                "id": "PlasticArmor_5",
+                "amount": 1,
+                "weight": 2.5,
+                "name": "Plastic Armor (Tier 5)"
+            }
+        ],
+        "rare": [
+            {
+                "type": "pal",
+                "id": "rare1",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 1"
+            },
+            {
+                "type": "pal",
+                "id": "rare2",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 2"
+            },
+            {
+                "type": "pal",
+                "id": "rare3",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 3"
+            },
+            {
+                "type": "pal",
+                "id": "rare4",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 4"
+            },
+            {
+                "type": "pal",
+                "id": "rare5",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 5"
+            },
+            {
+                "type": "pal",
+                "id": "rare6",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 6"
+            },
+            {
+                "type": "pal",
+                "id": "rare7",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 7"
+            },
+            {
+                "type": "pal",
+                "id": "rare8",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 8"
+            },
+            {
+                "type": "pal",
+                "id": "rare9",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 9"
+            },
+            {
+                "type": "pal",
+                "id": "rare10",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Rare Pal 10"
+            },
+            {
+                "type": "item",
+                "id": "PalSphere_Tera",
+                "amount": 12,
+                "weight": 3.5,
+                "name": "Tera Pal Spheres x12"
+            },
+            {
+                "type": "item",
+                "id": "PalUpgradeStone2",
+                "amount": 15,
+                "weight": 3.5,
+                "name": "Pal Upgrade Stone II x15"
+            },
+            {
+                "type": "item",
+                "id": "HandGun_Default_5",
+                "amount": 1,
+                "weight": 2.5,
+                "name": "Handgun (Tier 5)"
+            },
+            {
+                "type": "item",
+                "id": "Accessory_AT_2",
+                "amount": 1,
+                "weight": 3.0,
+                "name": "Rare Attack Accessory"
+            },
+            {
+                "type": "item",
+                "id": "AncientParts2",
+                "amount": 12,
+                "weight": 4.5,
+                "name": "Ancient Parts II x12"
+            },
+            {
+                "type": "item",
+                "id": "SkillCard_PowerShot",
+                "amount": 1,
+                "weight": 2.5,
+                "name": "Power Shot Skill Card"
+            },
+            {
+                "type": "currency",
+                "id": "PALDOGS",
+                "amount": 15000,
+                "weight": 6.0,
+                "name": "15,000 PALDOGS"
+            },
+            {
+                "type": "item",
+                "id": "ExpBoost_02",
+                "amount": 10,
+                "weight": 4.5,
+                "name": "Experience Boost II x10"
+            },
+            {
+                "type": "item",
+                "id": "IronArmor_5",
+                "amount": 1,
+                "weight": 3.0,
+                "name": "Iron Armor (Tier 5)"
+            },
+            {
+                "type": "item",
+                "id": "Blueprint_Head010_5",
+                "amount": 1,
+                "weight": 2.5,
+                "name": "Rare Helmet Blueprint"
+            }
+        ],
+        "basic": [
+            {
+                "type": "pal",
+                "id": "basic1",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 1"
+            },
+            {
+                "type": "pal",
+                "id": "basic2",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 2"
+            },
+            {
+                "type": "pal",
+                "id": "basic3",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 3"
+            },
+            {
+                "type": "pal",
+                "id": "basic4",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 4"
+            },
+            {
+                "type": "pal",
+                "id": "basic5",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 5"
+            },
+            {
+                "type": "pal",
+                "id": "basic6",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 6"
+            },
+            {
+                "type": "pal",
+                "id": "basic7",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 7"
+            },
+            {
+                "type": "pal",
+                "id": "basic8",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 8"
+            },
+            {
+                "type": "pal",
+                "id": "basic9",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 9"
+            },
+            {
+                "type": "pal",
+                "id": "basic10",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 10"
+            },
+            {
+                "type": "pal",
+                "id": "basic11",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 11"
+            },
+            {
+                "type": "pal",
+                "id": "basic12",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 12"
+            },
+            {
+                "type": "pal",
+                "id": "basic13",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 13"
+            },
+            {
+                "type": "pal",
+                "id": "basic14",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 14"
+            },
+            {
+                "type": "pal",
+                "id": "basic15",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 15"
+            },
+            {
+                "type": "pal",
+                "id": "basic16",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 16"
+            },
+            {
+                "type": "pal",
+                "id": "basic17",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 17"
+            },
+            {
+                "type": "pal",
+                "id": "basic18",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 18"
+            },
+            {
+                "type": "pal",
+                "id": "basic19",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 19"
+            },
+            {
+                "type": "pal",
+                "id": "basic20",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 20"
+            },
+            {
+                "type": "pal",
+                "id": "basic21",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 21"
+            },
+            {
+                "type": "pal",
+                "id": "basic22",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 22"
+            },
+            {
+                "type": "pal",
+                "id": "basic23",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 23"
+            },
+            {
+                "type": "pal",
+                "id": "basic24",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 24"
+            },
+            {
+                "type": "pal",
+                "id": "basic25",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Basic Pal 25"
+            },
+            {
+                "type": "item",
+                "id": "PalSphere",
+                "amount": 8,
+                "weight": 3.5,
+                "name": "Basic Pal Spheres x8"
+            },
+            {
+                "type": "item",
+                "id": "PalSphere_Mega",
+                "amount": 5,
+                "weight": 3.0,
+                "name": "Mega Pal Spheres x5"
+            },
+            {
+                "type": "item",
+                "id": "PalUpgradeStone",
+                "amount": 10,
+                "weight": 4.0,
+                "name": "Pal Upgrade Stone x10"
+            },
+            {
+                "type": "item",
+                "id": "WeakerBow_5",
+                "amount": 1,
+                "weight": 2.5,
+                "name": "Bow (Tier 5)"
+            },
+            {
+                "type": "item",
+                "id": "Accessory_HP_1",
+                "amount": 1,
+                "weight": 3.5,
+                "name": "Basic Health Accessory"
+            },
+            {
+                "type": "item",
+                "id": "AncientParts2",
+                "amount": 5,
+                "weight": 4.5,
+                "name": "Ancient Parts II x5"
+            },
+            {
+                "type": "currency",
+                "id": "PALDOGS",
+                "amount": 5000,
+                "weight": 7.0,
+                "name": "5,000 PALDOGS"
+            },
+            {
+                "type": "item",
+                "id": "ExpBoost_01",
+                "amount": 15,
+                "weight": 6.0,
+                "name": "Experience Boost I x15"
+            },
+            {
+                "type": "item",
+                "id": "IronArmor_3",
+                "amount": 1,
+                "weight": 3.0,
+                "name": "Iron Armor (Tier 3)"
+            },
+            {
+                "type": "item",
+                "id": "Arrow",
+                "amount": 80,
+                "weight": 9.0,
+                "name": "Arrows x80"
+            },
+            {
+                "type": "item",
+                "id": "HandgunBullet",
+                "amount": 100,
+                "weight": 8.0,
+                "name": "Handgun Bullets x100"
+            },
+            {
+                "type": "item",
+                "id": "Medicines",
+                "amount": 20,
+                "weight": 10.0,
+                "name": "Medicines x20"
+            },
+            {
+                "type": "item",
+                "id": "Wood",
+                "amount": 150,
+                "weight": 12.0,
+                "name": "Wood x150"
+            },
+            {
+                "type": "item",
+                "id": "Stone",
+                "amount": 150,
+                "weight": 12.0,
+                "name": "Stone x150"
+            },
+            {
+                "type": "item",
+                "id": "IronOre",
+                "amount": 80,
+                "weight": 9.0,
+                "name": "Iron Ore x80"
+            },
+            {
+                "type": "item",
+                "id": "Berries",
+                "amount": 100,
+                "weight": 15.0,
+                "name": "Berries x100"
+            },
+            {
+                "type": "item",
+                "id": "Fiber",
+                "amount": 120,
+                "weight": 14.0,
+                "name": "Fiber x120"
+            },
+            {
+                "type": "template_pal",
+                "id": "legend4",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "FireEmperor"
+            },
+            {
+                "type": "template_pal",
+                "id": "bastigor",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "SnowTigerBeastman"
+            },
+            {
+                "type": "template_pal",
+                "id": "ice_emperor",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Ice emperor"
+            },
+            {
+                "type": "template_pal",
+                "id": "jackprize",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "BOSS_BlackGriffon"
+            },
+            {
+                "type": "template_pal",
+                "id": "midprize",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Storm Courier"
+            },
+            {
+                "type": "template_pal",
+                "id": "anubis_021a5950-6a2d4aef-ae7e7098-d5bfc4f7",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "blackmetaldragon_7a38178c-48d34c3b-b6c4790c-f3699a48",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_blackgriffon_e71a7338-4b64a625-8ae903bb-3a23ca93",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Bellion"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_drillgame_65699151-3cee40c7-a2759b75-96051ac8",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_flowerdoll_e3c8a87d-9e004165-880f26c1-b37b9591",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Gardener spirit"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_ganesha_90666c33-4d754efc-98a5b4a8-5a7da1a3",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_goldenhorse_87ce4dc3-bed444b0-a767dac5-8b82f092",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_horus_water_b2791545-ec2c46e1-80fea1bd-efc57704",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_kingbahamut_dragon_f11fb65b-4b01160e-2d7d2aab-3ad36c60",
+                "amount": 1,
+                "weight": 1.0,
+                "name": ""
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_lazycatfish_d0aab0de-918e4e53-bab64a8f-2f9fa54e",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_mimicdog_25a58f6d-a4364c79-ac7bad40-ee445135",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_moonqueen_42d51159-428456e1-f601df98-10123939",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Goddess"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_mutant_507cea2e-3d5b4979-a1b4128e-2b8a456d",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Moon Queen"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_mysterymask_eefbc85f-4b6adb02-2e49cfab-be67e47a",
+                "amount": 1,
+                "weight": 1.0,
+                "name": ""
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_pinklizard_5679e192-3ba0424f-bdeea10c-63025110",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_plantslime_flower_513a3d0b-4f654f68-b673a17b-d6ae9a84",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_ronin_71a775b7-48ad8259-b5edf7a4-2811dbb5",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Igris"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_stuffedshark_bf634659-4f5606a2-f3cbd6b9-6e737120",
+                "amount": 1,
+                "weight": 1.0,
+                "name": ""
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_thunderdragonman_8c359948-88a8405d-a0e8b77d-ce46ad3c",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_whiteshielddragon_f200bdd1-e8f84f3f-90b7a953-b747969f",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "boss_winggolem_e3e2d445-47d5d71a-f8f710be-ff520185",
+                "amount": 1,
+                "weight": 1.0,
+                "name": ""
+            },
+            {
+                "type": "template_pal",
+                "id": "darkalien_3f2a4079-a63e41ca-8bc1131b-e83f6529",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "elecpanda_47645f5e-518b43fa-a0de9869-4233db33",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "fengyundeeper_a30ff17a-84db4dbf-b4a9ac22-868d04d3",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "NMAX"
+            },
+            {
+                "type": "template_pal",
+                "id": "guardiandog_0e8ece25-6e4c4420-a11ed9e5-456b1e7c",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "guardiandog_d9f0f6e1-ee294f73-901bf514-1c1ce764",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "jetdragon_fc48957d-4bd1d596-9bef69b2-c4d6b0f2",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Security guard"
+            },
+            {
+                "type": "template_pal",
+                "id": "lilyqueen_051bd719-8ccc4099-8ce19ad2-8aaa15bc",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "lilyqueen_dark_e1b91cd7-f62a4327-9188b16f-ad5d3672",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "Grass Spirit"
+            },
+            {
+                "type": "template_pal",
+                "id": "predator_grimgirl_7c5df801-44d14b60-9e0a5aca-bab53700",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "purplespider_16e86ffb-0bc64904-9877e7f2-545d51d7",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            },
+            {
+                "type": "template_pal",
+                "id": "umihebi_b1b1b985-268e4275-ba99ea2a-53d8cb58",
+                "amount": 1,
+                "weight": 1.0,
+                "name": "!!!DUPED PAL!!!"
+            }
+        ]
+    },
+    "burst_settings": {
+        "max_rolls": 2,
+        "cooldown_seconds": 180
+    },
+    "global_burst": {
+        "max_rolls": 20,
+        "cooldown_seconds": 60
+    },
+    "daily_limit": 50,
+    "roll_cost": 500,
+    "daily_free_rolls": 1,
+    "pity_system": {
+        "legendary_guarantee": 100,
+        "epic_guarantee": 40,
+        "current_rolls": 0
+    }
+}

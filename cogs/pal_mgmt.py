@@ -15,12 +15,23 @@ class PalCageManagement(commands.Cog):
         admin_id = config.get('admin_user_id', 0)
         return interaction.user.id == admin_id or (hasattr(interaction.user, 'guild_permissions') and interaction.user.guild_permissions.administrator)
 
-    @nextcord.slash_command(name="pal_cage")
+    @nextcord.slash_command(
+        name="pal_cage", 
+        description="View custom Pal information",
+        default_member_permissions=nextcord.Permissions(administrator=True)
+    )
     async def pal_cage_group(self, interaction: nextcord.Interaction):
-        """Parent command for Custom Pal (Pal Cage) management"""
         pass
 
-    @pal_cage_group.subcommand(name="add", description="Add a custom Pal definition (JSON)")
+    @nextcord.slash_command(
+        name="pal_admin", 
+        description="Admin-only Pal Cage management",
+        default_member_permissions=nextcord.Permissions(administrator=True)
+    )
+    async def pal_admin_group(self, interaction: nextcord.Interaction):
+        pass
+
+    @pal_admin_group.subcommand(name="add", description="Add a custom Pal definition (JSON)")
     async def add_custom_pal(
         self,
         interaction: nextcord.Interaction,
@@ -68,14 +79,17 @@ class PalCageManagement(commands.Cog):
                 await interaction.response.send_message("📭 The Pal Cage is empty.", ephemeral=True)
                 return
             
-            embed = nextcord.Embed(title="🐾 Pal Cage Database", color=0x00FF88)
-            for n in names:
-                info = pal_system.get_pal(n)
-                embed.add_field(name=n.title(), value=info.get('description', 'No description'), inline=True)
+            embed = nextcord.Embed(
+                title="🐾 Pal Cage Database", 
+                description="List of custom Pal templates available:\n\n" + "\n".join([f"• **{n.title()}**" for n in names[:50]]),
+                color=0x00FF88
+            )
+            if len(names) > 50:
+                embed.set_footer(text=f"Showing 50 of {len(names)} pals. Use /pal_mgmt view_pal <name> for details.")
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-    @pal_cage_group.subcommand(name="delete", description="Permanently delete a custom Pal")
+    @pal_admin_group.subcommand(name="delete", description="Permanently delete a custom Pal")
     async def delete_pal(self, interaction: nextcord.Interaction, name: str):
         if not self.is_admin(interaction):
             await interaction.response.send_message("❌ Permission denied.", ephemeral=True)
@@ -91,7 +105,7 @@ class PalCageManagement(commands.Cog):
         else:
             await interaction.response.send_message("❌ Custom Pal not found.", ephemeral=True)
 
-    @pal_cage_group.subcommand(name="import_folder", description="Import all .json files from a directory")
+    @pal_admin_group.subcommand(name="import_folder", description="Import all .json files from a directory")
     async def import_pals_folder(
         self, 
         interaction: nextcord.Interaction,
@@ -157,7 +171,7 @@ class PalCageManagement(commands.Cog):
         
         await interaction.followup.send(report, ephemeral=True)
 
-    @pal_cage_group.subcommand(name="config_templates", description="Set the PalGuard PalTemplates directory path")
+    @pal_admin_group.subcommand(name="config_templates", description="Set the PalGuard PalTemplates directory path")
     async def set_template_dir(self, interaction: nextcord.Interaction, directory_path: str):
         if not self.is_admin(interaction):
             await interaction.response.send_message("❌ Permission denied.", ephemeral=True)
@@ -170,7 +184,7 @@ class PalCageManagement(commands.Cog):
         config.set('pal_template_dir', directory_path)
         await interaction.response.send_message(f"✅ PalGuard template directory set to: `{directory_path}`. Future adds/imports will sync to this folder.", ephemeral=True)
 
-    @pal_cage_group.subcommand(name="sync_all", description="Push all database Pals as JSON files to the template folder")
+    @pal_admin_group.subcommand(name="sync_all", description="Push all database Pals as JSON files to the template folder")
     async def sync_all_pals(self, interaction: nextcord.Interaction):
         if not self.is_admin(interaction):
             await interaction.response.send_message("❌ Permission denied.", ephemeral=True)
@@ -196,7 +210,7 @@ class PalCageManagement(commands.Cog):
                 
         await interaction.followup.send(f"✅ Synced **{success_count}** Pals to `{template_dir}`.", ephemeral=True)
 
-    @pal_cage_group.subcommand(name="give", description="Give a custom Pal to a player")
+    @pal_admin_group.subcommand(name="give", description="Give a custom Pal to a player")
     async def give_custom_pal(
         self,
         interaction: nextcord.Interaction,
@@ -230,27 +244,22 @@ class PalCageManagement(commands.Cog):
         else:
             steam_id = stats['steam_id']
 
-        # Based on your research, embedded JSON is no longer supported via RCON.
-        # We must use 'givepal_j' which expects a filename (without .json) 
-        # that already exists in the server's PalTemplates folder.
+        # Auto-sync template file if directory is configured
+        template_dir = config.get('pal_template_dir')
+        if template_dir and os.path.exists(template_dir):
+            try:
+                file_path = os.path.join(template_dir, f"{pal_name.lower()}.json")
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(json.loads(pal['json']), f, indent=4)
+            except Exception as e:
+                print(f"⚠️ Failed to auto-sync template '{pal_name}' for manual give: {e}")
         
-        # The 'pal_name' used here is the key in our database, which matches 
-        # the filename (without .json) from the import.
-        cmd = f'givepal_j {steam_id} {pal_name}'
+        success, resp = await rcon_util.give_pal_template(steam_id, pal_name)
         
-        print(f"📡 Sending Custom Pal Template command via RCON: {cmd}")
-        
-        server_info = rcon_util._get_server_info()
-        resp = await rcon_util.rcon_command(server_info, cmd)
-        
-        # Success check for givepal_j usually looks for 'added', 'success', or 'sent'
-        if resp and ("success" in resp.lower() or "spawned" in resp.lower() or "sent" in resp.lower() or "ok" in resp.lower() or "added" in resp.lower() or "given" in resp.lower()):
+        if success:
             await interaction.followup.send(f"✅ Successfully sent command to give template **{pal_name}** to `{player_name}`.")
         else:
-            if resp == "" or resp is None:
-                await interaction.followup.send(f"✅ Command `{cmd}` sent to server. (Check in-game)")
-            else:
-                await interaction.followup.send(f"❌ Server returned: {resp}\n*Note: Ensure the file `{pal_name}.json` exists in your server's PalTemplates folder.*")
+            await interaction.followup.send(f"❌ Server returned: {resp}\n*Note: Ensure the file `{pal_name}.json` exists in your server's PalTemplates folder.*")
 
     @give_custom_pal.on_autocomplete("player_name")
     async def give_pal_player_autocomplete(self, interaction: nextcord.Interaction, current: str):

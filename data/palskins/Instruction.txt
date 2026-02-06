@@ -1,0 +1,36 @@
+================================================================
+           PALWORLD SKIN SHOP - INSTALLATION GUIDE
+================================================================
+
+Thank you for your purchase! To ensure your skin works correctly, 
+please follow the instructions below:
+
+----------------------------------------------------------------
+1. AUTOMATIC INSTALLATION (Recommended)
+----------------------------------------------------------------
+1. Extract the contents of this ZIP file to a folder.
+2. Run "install_skin.bat".
+3. The script will find your Palworld folder and install the skin.
+4. Start your game and enjoy!
+
+----------------------------------------------------------------
+2. HOW TO SWITCH OR REMOVE SKINS (Manual)
+----------------------------------------------------------------
+Palworld only allows one skin for the same character/Pal at a time. 
+If you want to remove this skin or switch to another one:
+
+1. Go to your Steam Library.
+2. Right-click "Palworld" -> Manage -> Browse local files.
+3. Navigate to: Pal\Content\Paks\~mods
+4. Delete the ".pak" file associated with the skin you want to remove.
+
+----------------------------------------------------------------
+3. TROUBLESHOOTING
+----------------------------------------------------------------
+- If the .bat script fails, you can manually copy the ".pak" file 
+  into your "Pal\Content\Paks\~mods" folder.
+- If you don't see a "~mods" folder, you can create one yourself 
+  inside the "Paks" directory.
+
+Enjoy your new look!
+================================================================

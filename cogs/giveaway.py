@@ -123,7 +123,7 @@ def get_giveaway_embed(data):
     embed = nextcord.Embed(
         title="🎁 SPECIAL GIVEAWAY 🎁",
         description=(
-            f"Prize: **{data['prize_name']}** ({data['prize_type'].title()})\n"
+            f"Prize: **{data['prize_name']}** {f'({data['prize_type'].title()})' if data['prize_type'] != 'paldogs' else 'PALDOGS'}\n"
             f"Winners: **{data['winners_count']}**\n"
             f"Participants: **{participants_count}**\n"
             f"Min Participants: **{data.get('min_participants', 0)}**\n"
@@ -264,19 +264,19 @@ class GiveawayClaimView(nextcord.ui.View):
             if kit:
                 results = []
                 for item_id, amt in kit['items'].items():
-                    res = await rcon_util.give_item(steam_id, item_id, amt)
-                    results.append(res)
+                    res_bool, res_msg = await rcon_util.give_item(steam_id, item_id, amt)
+                    results.append(res_bool)
                 success = any(results)
         elif prize_type.lower() == "pal":
-            pal = pal_system.get_pal(prize_name)
-            if pal:
-                cmd = f'givepal_j {steam_id} {prize_name}'
-                server_info = rcon_util._get_server_info()
-                resp = await rcon_util.rcon_command(server_info, cmd)
-                if resp is not None: # RCON returns None on timeout/failure
-                    # Success check for givepal_j
-                    if resp == "" or any(x in resp.lower() for x in ["success", "spawned", "sent", "ok", "added", "given"]):
-                        success = True
+            success, resp = await rcon_util.give_pal_template(steam_id, prize_name)
+        elif prize_type.lower() == "paldogs":
+            try:
+                amount = int(prize_name)
+                await db.add_palmarks(steam_id, amount, f"Giveaway Winner")
+                success = True
+            except Exception as e:
+                logging.error(f"Error giving paldogs giveaway prize: {e}")
+                success = False
 
         if success:
             giveaway_data.mark_claimed(gid, interaction.user.id)
@@ -301,17 +301,25 @@ class Giveaway(commands.Cog):
         admin_id = config.get('admin_user_id', 0)
         return interaction.user.id == admin_id or (hasattr(interaction.user, 'guild_permissions') and interaction.user.guild_permissions.administrator)
 
-    @nextcord.slash_command(name="giveaway", description="Giveaway management commands")
+    @nextcord.slash_command(name="giveaway", description="View active giveaways")
     async def giveaway_group(self, interaction: nextcord.Interaction):
         pass
 
-    @giveaway_group.subcommand(name="create", description="Start a new giveaway")
+    @nextcord.slash_command(
+        name="giveaway_admin", 
+        description="Admin giveaway management",
+        default_member_permissions=nextcord.Permissions(administrator=True)
+    )
+    async def giveaway_admin_group(self, interaction: nextcord.Interaction):
+        pass
+
+    @giveaway_admin_group.subcommand(name="create", description="Start a new giveaway")
     async def create_giveaway(
         self,
         interaction: nextcord.Interaction,
         duration_mins: int = nextcord.SlashOption(description="Duration in minutes", min_value=1),
-        prize_type: str = nextcord.SlashOption(description="Type of prize", choices={"Kit": "kit", "Pal": "pal"}),
-        prize_name: str = nextcord.SlashOption(description="Name of the kit or custom pal", autocomplete=True),
+        prize_type: str = nextcord.SlashOption(description="Type of prize", choices={"PalDogs": "paldogs", "Kit": "kit", "Pal": "pal"}),
+        prize_name: str = nextcord.SlashOption(description="Name of kit/pal or PalDogs amount", autocomplete=True),
         winners_count: int = nextcord.SlashOption(description="Number of winners", min_value=1, default=1),
         min_participants: int = nextcord.SlashOption(description="Minimum participants required", min_value=0, default=0)
     ):
@@ -324,9 +332,13 @@ class Giveaway(commands.Cog):
             if not kit_system.get_kit(prize_name):
                 await interaction.response.send_message(f"❌ Kit '{prize_name}' not found.", ephemeral=True)
                 return
-        else:
+        elif prize_type == "pal":
             if not pal_system.get_pal(prize_name):
                 await interaction.response.send_message(f"❌ Custom Pal '{prize_name}' not found.", ephemeral=True)
+                return
+        elif prize_type == "paldogs":
+            if not prize_name.isdigit():
+                await interaction.response.send_message(f"❌ PalDogs amount must be a number.", ephemeral=True)
                 return
 
         end_time = datetime.now() + timedelta(minutes=duration_mins)
@@ -359,6 +371,11 @@ class Giveaway(commands.Cog):
             choices = [k for k in kit_system.get_all_kit_names() if current.lower() in k.lower()]
         elif prize_type == "pal":
             choices = [p for p in pal_system.get_all_pal_names() if current.lower() in p.lower()]
+        elif prize_type == "paldogs":
+            suggestions = ["500", "1000", "5000", "10000", "25000", "50000"]
+            choices = [s for s in suggestions if current in s]
+            if not choices and current.isdigit():
+                choices = [current]
         else:
             choices = []
         await interaction.response.send_autocomplete(choices[:25])
@@ -448,11 +465,11 @@ class Giveaway(commands.Cog):
                     dm_embed = nextcord.Embed(
                         title="🏆 YOU WON A GIVEAWAY! 🏆",
                         description=(
-                            f"Congratulations! You won **{data['prize_name']}** ({data['prize_type'].title()})!\n\n"
+                            f"Congratulations! You won **{data['prize_name']}** {f'({data['prize_type'].title()})' if data['prize_type'] != 'paldogs' else 'PALDOGS'}!\n\n"
                             "**How to claim:**\n"
                             "1. Log in to the Palworld server.\n"
                             "2. Click the **Claim Reward** button below.\n"
-                            "3. You **MUST** be online in the server to receive the items/Pal."
+                            "3. You **MUST** be online in the server to receive your reward."
                         ),
                         color=0x00FF88
                     )
@@ -460,7 +477,7 @@ class Giveaway(commands.Cog):
             except Exception as e:
                 logging.error(f"Failed to send DM to winner {winner_id}: {e}")
 
-    @giveaway_group.subcommand(name="reroll", description="Reroll a winner for an ended giveaway")
+    @giveaway_admin_group.subcommand(name="reroll", description="Reroll a winner for an ended giveaway")
     async def reroll_giveaway(
         self, 
         interaction: nextcord.Interaction, 
@@ -493,11 +510,11 @@ class Giveaway(commands.Cog):
                 dm_embed = nextcord.Embed(
                     title="🏆 YOU WON A GIVEAWAY (REROLL)! 🏆",
                     description=(
-                        f"Congratulations! You won **{data['prize_name']}** ({data['prize_type'].title()})!\n\n"
+                        f"Congratulations! You won **{data['prize_name']}** {f'({data['prize_type'].title()})' if data['prize_type'] != 'paldogs' else 'PALDOGS'}!\n\n"
                         "**How to claim:**\n"
                         "1. Log in to the Palworld server.\n"
                         "2. Click the **Claim Reward** button below.\n"
-                        "3. You **MUST** be online in the server to receive the items/Pal."
+                        "3. You **MUST** be online in the server to receive your reward."
                     ),
                     color=0x00FF88
                 )
@@ -505,7 +522,7 @@ class Giveaway(commands.Cog):
         except Exception as e:
             logging.error(f"Failed to send DM to reroll winner {winner}: {e}")
 
-    @giveaway_group.subcommand(name="active", description="List all active giveaways")
+    @giveaway_admin_group.subcommand(name="active", description="List all active giveaways")
     async def list_active(self, interaction: nextcord.Interaction):
         if not self.is_admin(interaction):
             await interaction.response.send_message("❌ Permission denied.", ephemeral=True)
@@ -539,7 +556,7 @@ class Giveaway(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @giveaway_group.subcommand(name="delete", description="Delete a giveaway from database")
+    @giveaway_admin_group.subcommand(name="delete", description="Delete a giveaway from database")
     async def delete_giveaway(
         self, 
         interaction: nextcord.Interaction, 
@@ -569,7 +586,7 @@ class Giveaway(commands.Cog):
         else:
             await interaction.response.send_message(f"❌ Failed to delete giveaway `{message_id}`.", ephemeral=True)
 
-    @giveaway_group.subcommand(name="show", description="Re-post an active giveaway to the current channel")
+    @giveaway_admin_group.subcommand(name="show", description="Re-post an active giveaway to the current channel")
     async def show_giveaway(
         self,
         interaction: nextcord.Interaction,

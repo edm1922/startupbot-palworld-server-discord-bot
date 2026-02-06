@@ -1,65 +1,803 @@
 {
-    "roulette": [
+    "wheel": [
         {
-            "id": "PalSphere",
-            "name": "Pal Sphere",
-            "amount": 5,
-            "weight": 50
-        },
-        {
-            "id": "PalSphere_Mega",
-            "name": "Mega Sphere",
-            "amount": 3,
-            "weight": 28
-        },
-        {
-            "id": "PalSphere_Giga",
-            "name": "Giga Sphere",
-            "amount": 2,
-            "weight": 14
-        },
-        {
-            "id": "MissileBullet",
-            "name": "Guided Missile Ammo",
-            "amount": 2,
-            "weight": 4
-        },
-        {
-            "id": "ElectricOrgan",
-            "name": "Electric Organ",
-            "amount": 10,
-            "weight": 8
-        },
-        {
-            "id": "PAL_Growth_Stone_S",
-            "name": "Small Pal Growth Stone",
-            "amount": 5,
-            "weight": 10
-        },
-        {
-            "id": "PAL_Growth_Stone_M",
-            "name": "Medium Pal Growth Stone",
-            "amount": 3,
-            "weight": 6
-        },
-        {
-            "id": "PAL_Growth_Stone_L",
-            "name": "Large Pal Growth Stone",
+            "id": "legend4",
+            "name": "FireEmperor",
+            "type": "template_pal",
             "amount": 1,
-            "weight": 2
+            "weight": 0.5,
+            "grand_prize": false
+        },
+        {
+            "id": "legend3",
+            "name": "Hartalis",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.5,
+            "grand_prize": false
+        },
+        {
+            "id": "legend1",
+            "name": "\u2b50 BOSS_DarkMechaDragon (Legendary Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.5,
+            "grand_prize": false,
+            "announcement": "\ud83c\udf89 you are the chosen one you won BOSS_DarkMechaDragon!"
+        },
+        {
+            "id": "legend2",
+            "name": "\u2b50 BOSS_PoseidonOrca (Legendary Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.5,
+            "grand_prize": false,
+            "announcement": "\ud83c\udf89 you are the chosen one you won BOSS_PoseidonOrca!"
+        },
+        {
+            "id": "rare1",
+            "name": "\u2728 Desert Artisan (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Desert Artisan!"
+        },
+        {
+            "id": "rare10",
+            "name": "\u2728 Tidal Artisan (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Tidal Artisan!"
+        },
+        {
+            "id": "rare2",
+            "name": "\u2728 Crimson Forge (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Crimson Forge!"
+        },
+        {
+            "id": "rare3",
+            "name": "\u2728 Storm Smith (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Storm Smith!"
+        },
+        {
+            "id": "rare4",
+            "name": "\u2728 Dark Forgemaster (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Dark Forgemaster!"
+        },
+        {
+            "id": "rare5",
+            "name": "\u2728 Volcanic Artisan (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Volcanic Artisan!"
+        },
+        {
+            "id": "rare6",
+            "name": "\u2728 Green Thumb (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 2.3,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Green Thumb!"
+        },
+        {
+            "id": "rare7",
+            "name": "\u2728 Dark Artisan (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Dark Artisan!"
+        },
+        {
+            "id": "rare8",
+            "name": "\u2728 Storm Courier (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Storm Courier!"
+        },
+        {
+            "id": "rare9",
+            "name": "\u2728 Iron Forge (Rare Custom)",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.5,
+            "announcement": "\ud83c\udf8a Awesome! Someone won the Rare Iron Forge!"
+        },
+        {
+            "id": "multiplier_2",
+            "name": "\u2716\ufe0f x2 Multiplier (RE-SPIN!)",
+            "type": "multiplier",
+            "amount": 2,
+            "weight": 3.0,
+            "spin_effect": "respin"
+        },
+        {
+            "id": "multiplier_3",
+            "name": "\u2716\ufe0f x3 Multiplier (RE-SPIN!)",
+            "type": "multiplier",
+            "amount": 3,
+            "weight": 1.0,
+            "spin_effect": "respin"
+        },
+        {
+            "id": "multiplier_5",
+            "name": "\u2716\ufe0f x5 Multiplier (SUPER RE-SPIN!)",
+            "type": "multiplier",
+            "amount": 5,
+            "weight": 0.3,
+            "spin_effect": "respin"
+        },
+        {
+            "id": "PALDOGS_JACKPOT",
+            "name": "\ud83d\udcb0 10,000 PALDOGS",
+            "type": "currency",
+            "amount": 10000,
+            "weight": 0.5,
+            "announcement": "\ud83d\udcb0 Big win! 10,000 PALDOGS!"
+        },
+        {
+            "id": "PALDOGS_STASH",
+            "name": "\ud83d\udcb0 5,000 PALDOGS",
+            "type": "currency",
+            "amount": 5000,
+            "weight": 1.0
+        },
+        {
+            "id": "EXP_MEGA",
+            "name": "\ud83d\udd19 10,000 EXP Boost",
+            "type": "exp",
+            "amount": 10000,
+            "weight": 2.0
+        },
+        {
+            "id": "PalSphere_Ultimate",
+            "name": "\ud83d\udd2e Ultimate Pal Sphere x5",
+            "type": "item",
+            "amount": 5,
+            "weight": 3.0,
+            "announcement": "\ud83c\udfaf Ultimate spheres added!"
         },
         {
             "id": "PalSphere_Master",
-            "name": "Master Sphere",
-            "amount": 1,
-            "weight": 0.6
+            "name": "\ud83d\udd2e Master Pal Sphere x3",
+            "type": "item",
+            "amount": 3,
+            "weight": 5.0
+        },
+        {
+            "id": "PalSphere_Tera",
+            "name": "\ud83d\udd2e Tera Pal Sphere x5",
+            "type": "item",
+            "amount": 5,
+            "weight": 8.0
+        },
+        {
+            "id": "AncientParts3",
+            "name": "\u2699\ufe0f Advanced Ancient Parts x5",
+            "type": "item",
+            "amount": 5,
+            "weight": 4.0,
+            "announcement": "\ud83d\udd27 Ancient parts found!"
         },
         {
             "id": "AncientParts2",
-            "name": "Ancient Parts",
+            "name": "\u2699\ufe0f Ancient Parts x8",
+            "type": "item",
+            "amount": 8,
+            "weight": 10.0
+        },
+        {
+            "id": "SkillCard_HyperBeam",
+            "name": "\ud83d\udcdc Mythical Skill Card (Random)",
+            "type": "item",
+            "amount": 1,
+            "weight": 2.0,
+            "rarity_tier": "mythical",
+            "announcement": "\ud83d\udcd6 Rare skill card obtained!"
+        },
+        {
+            "id": "PalUpgradeStone3",
+            "name": "\ud83d\udc8e Pal Upgrade Stone III x10",
+            "type": "item",
             "amount": 10,
-            "weight": 0.15
+            "weight": 3.0,
+            "announcement": "\ud83d\udc8e Upgrade stones awarded!"
+        },
+        {
+            "id": "PalUpgradeStone4",
+            "name": "\ud83d\udc8e Pal Upgrade Stone IV x3",
+            "type": "item",
+            "amount": 3,
+            "weight": 1.5
+        },
+        {
+            "id": "Accessory_AT_3",
+            "name": "\ud83c\udfc6 Random Legendary Accessory",
+            "type": "item",
+            "amount": 1,
+            "weight": 2.0,
+            "rarity_tier": "legendary"
+        },
+        {
+            "id": "Blueprint_AssaultRifle_Default5",
+            "name": "\ud83d\udcd0 Rare Blueprint (Random)",
+            "type": "item",
+            "amount": 1,
+            "weight": 4.0
+        },
+        {
+            "id": "PALDOGS_MEDIUM",
+            "name": "\ud83d\udcb0 2,500 PALDOGS",
+            "type": "currency",
+            "amount": 2500,
+            "weight": 8.0
+        },
+        {
+            "id": "PALDOGS_SMALL",
+            "name": "\ud83d\udcb0 1,000 PALDOGS",
+            "type": "currency",
+            "amount": 1000,
+            "weight": 15.0
+        },
+        {
+            "id": "EXP_MEDIUM",
+            "name": "\ud83d\udd19 5,000 EXP Boost",
+            "type": "exp",
+            "amount": 5000,
+            "weight": 12.0
+        },
+        {
+            "id": "PALDOGS_TINY",
+            "name": "\ud83d\udcb0 250 PALDOGS (Consolation)",
+            "type": "currency",
+            "amount": 250,
+            "weight": 25.0
+        },
+        {
+            "id": "EXP_TINY",
+            "name": "\ud83d\udd19 1,000 EXP Boost",
+            "type": "exp",
+            "amount": 1000,
+            "weight": 30.0
+        },
+        {
+            "id": "PalSphere_Giga",
+            "name": "\ud83d\udd2e Giga Pal Sphere x3",
+            "type": "item",
+            "amount": 3,
+            "weight": 40.0
+        },
+        {
+            "id": "PalSphere",
+            "name": "\ud83d\udd2e Pal Sphere x5",
+            "type": "item",
+            "amount": 5,
+            "weight": 50.0
+        },
+        {
+            "id": "CopperIngot",
+            "name": "\u26cf\ufe0f Copper Ingot x10",
+            "type": "item",
+            "amount": 10,
+            "weight": 55.0
+        },
+        {
+            "id": "IronIngot",
+            "name": "\u26cf\ufe0f Iron Ingot x5",
+            "type": "item",
+            "amount": 5,
+            "weight": 45.0
+        },
+        {
+            "id": "spin_ticket",
+            "name": "\ud83c\udf9f\ufe0f Free Spin Ticket",
+            "type": "ticket",
+            "amount": 1,
+            "weight": 6.0,
+            "spin_effect": "free_spin"
+        },
+        {
+            "id": "double_chance",
+            "name": "\ud83c\udfaf Double Chance (Next Spin)",
+            "type": "buff",
+            "amount": 1,
+            "weight": 4.0,
+            "effect": "next_spin_double_win_chance",
+            "duration": 1
+        },
+        {
+            "id": "basic1",
+            "name": "Lamball",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic10",
+            "name": "Jolthog",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic11",
+            "name": "Jolthog Cryst",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic12",
+            "name": "Gumoss",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic13",
+            "name": "Rooby",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic14",
+            "name": "Teafant",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic15",
+            "name": "Fuack",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic16",
+            "name": "Tanzee",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic17",
+            "name": "Tanzee",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic18",
+            "name": "Daedream",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic19",
+            "name": "Rushoar",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic2",
+            "name": "Chikipi",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic20",
+            "name": "Celaray",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic21",
+            "name": "Flopie",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic22",
+            "name": "Fuddler",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic23",
+            "name": "Nox",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic24",
+            "name": "Hoocrates",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic25",
+            "name": "Ribbuny",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic3",
+            "name": "Cattiva",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic4",
+            "name": "Lifmunk",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic5",
+            "name": "Foxparks",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic6",
+            "name": "Pengullet",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic7",
+            "name": "Vixy",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic8",
+            "name": "Cremis",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "basic9",
+            "name": "Sparkit",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 3.0
+        },
+        {
+            "id": "bastigor",
+            "name": "SnowTigerBeastman",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.5
+        },
+        {
+            "id": "epic1",
+            "name": "BOSS_NightLady_Dark",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "epic2",
+            "name": "BOSS_KingBahamut_Dragon",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "epic3",
+            "name": "BOSS_SaintCentaur",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "epic4",
+            "name": "BOSS_WhiteAlienDragon",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.5
+        },
+        {
+            "id": "epic5",
+            "name": "BOSS_BlackCentaur",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "epic6",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.3,
+            "grand_prize": true
+        },
+        {
+            "id": "ice_emperor",
+            "name": "Ice emperor",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.5
+        },
+        {
+            "id": "jackprize",
+            "name": "BOSS_BlackGriffon",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.5
+        },
+        {
+            "id": "midprize",
+            "name": "Storm Courier",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "anubis_021a5950-6a2d4aef-ae7e7098-d5bfc4f7",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "blackmetaldragon_7a38178c-48d34c3b-b6c4790c-f3699a48",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_blackgriffon_e71a7338-4b64a625-8ae903bb-3a23ca93",
+            "name": "Bellion",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_drillgame_65699151-3cee40c7-a2759b75-96051ac8",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_flowerdoll_e3c8a87d-9e004165-880f26c1-b37b9591",
+            "name": "Gardener spirit",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_ganesha_90666c33-4d754efc-98a5b4a8-5a7da1a3",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_goldenhorse_87ce4dc3-bed444b0-a767dac5-8b82f092",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_horus_water_b2791545-ec2c46e1-80fea1bd-efc57704",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_kingbahamut_dragon_f11fb65b-4b01160e-2d7d2aab-3ad36c60",
+            "name": "",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_lazycatfish_d0aab0de-918e4e53-bab64a8f-2f9fa54e",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_mimicdog_25a58f6d-a4364c79-ac7bad40-ee445135",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_moonqueen_42d51159-428456e1-f601df98-10123939",
+            "name": "Goddess",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_mutant_507cea2e-3d5b4979-a1b4128e-2b8a456d",
+            "name": "Moon Queen",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_mysterymask_eefbc85f-4b6adb02-2e49cfab-be67e47a",
+            "name": "",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_pinklizard_5679e192-3ba0424f-bdeea10c-63025110",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_plantslime_flower_513a3d0b-4f654f68-b673a17b-d6ae9a84",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_ronin_71a775b7-48ad8259-b5edf7a4-2811dbb5",
+            "name": "Igris",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_stuffedshark_bf634659-4f5606a2-f3cbd6b9-6e737120",
+            "name": "",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_thunderdragonman_8c359948-88a8405d-a0e8b77d-ce46ad3c",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_whiteshielddragon_f200bdd1-e8f84f3f-90b7a953-b747969f",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "boss_winggolem_e3e2d445-47d5d71a-f8f710be-ff520185",
+            "name": "",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "darkalien_3f2a4079-a63e41ca-8bc1131b-e83f6529",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "elecpanda_47645f5e-518b43fa-a0de9869-4233db33",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "fengyundeeper_a30ff17a-84db4dbf-b4a9ac22-868d04d3",
+            "name": "NMAX",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "guardiandog_0e8ece25-6e4c4420-a11ed9e5-456b1e7c",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "guardiandog_d9f0f6e1-ee294f73-901bf514-1c1ce764",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "jetdragon_fc48957d-4bd1d596-9bef69b2-c4d6b0f2",
+            "name": "Security guard",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "lilyqueen_051bd719-8ccc4099-8ce19ad2-8aaa15bc",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "lilyqueen_dark_e1b91cd7-f62a4327-9188b16f-ad5d3672",
+            "name": "Grass Spirit",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "predator_grimgirl_7c5df801-44d14b60-9e0a5aca-bab53700",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 0.8
+        },
+        {
+            "id": "purplespider_16e86ffb-0bc64904-9877e7f2-545d51d7",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
+        },
+        {
+            "id": "umihebi_b1b1b985-268e4275-ba99ea2a-53d8cb58",
+            "name": "!!!DUPED PAL!!!",
+            "type": "template_pal",
+            "amount": 1,
+            "weight": 1.0
         }
     ],
-    "win_chance": 0.7
+    "spin_cost": 500,
+    "daily_free_spins": 1,
+    "jackpot_protection": 150,
+    "grand_prize_guarantee": 350,
+    "streak_bonus": {
+        "3_spins": "extra_10pct_chance",
+        "5_spins": "extra_25pct_chance",
+        "10_spins": "guaranteed_rare_item"
+    },
+    "last_grand_winner": "Jaikoku",
+    "last_grand_prize": "\\u2b50 BOSS_LegendDeer (Legendary Custom)",
+    "total_spins": 0,
+    "jackpot_progress": 0
 }

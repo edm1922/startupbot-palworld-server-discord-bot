@@ -1,5 +1,5 @@
 {
-    "starter": {
+    "beginner_essentials": {
         "items": {
             "PalSphere": 25,
             "IronHelmet": 1,
@@ -9,85 +9,167 @@
             "WeakerBow": 1,
             "Arrow": 50,
             "Pizza": 25,
-            "CopperArmor": 1
+            "CopperArmor": 1,
+            "Medicines": 10
         },
-        "description": "asic supplies to help you get started or recover quickly. Perfect for new players and fresh spawns.",
-        "price": 10
+        "description": "Complete starter kit for new players. Contains tools, weapons, armor, and supplies to get started.",
+        "price": 100,
+        "category": "starter",
+        "level_requirement": 1
     },
-    "builder_kit": {
+    "resource_gatherer": {
         "items": {
-            "Wood": 200,
-            "Stone": 300,
-            "RepairKit": 50
+            "Pickaxe_Tier_03": 1,
+            "Axe_Tier_03": 1,
+            "Wood": 500,
+            "Stone": 500,
+            "CopperOre": 300,
+            "IronOre": 200,
+            "Coal": 150,
+            "Sulfur": 100,
+            "Fiber": 300,
+            "Leather": 200
         },
-        "description": "Materials and parts for base construction and repairs. Ideal for builders and base upgrades.",
-        "price": 10
+        "description": "Advanced tools and raw materials for gathering and crafting. Perfect for resource collection.",
+        "price": 250,
+        "category": "resources",
+        "level_requirement": 15
     },
-    "survival_kit": {
+    "combat_preparation": {
         "items": {
-            "Salad": 50,
-            "Medicines": 10,
-            "HandgunBullet": 100,
+            "HandGun_Default": 1,
+            "HandgunBullet": 200,
             "RifleBullet": 150,
-            "Potion": 5
+            "AssaultRifleBullet": 100,
+            "ShotgunBullet": 100,
+            "PumpActionShotgun": 1,
+            "Medicines": 25,
+            "LuxuryMedicines": 10,
+            "Potion": 10,
+            "Potion_High": 5
         },
-        "description": "Food, healing, and essentials for exploration and PvE. Stay alive longer while roaming the world.",
-        "price": 70
+        "description": "Weapons, ammunition, and healing items for combat and exploration missions.",
+        "price": 300,
+        "category": "combat",
+        "level_requirement": 20
     },
-    "breeding": {
+    "base_builder": {
         "items": {
-            "ExpBoost_03": 10,
-            "ConsumePalLevelUp": 5,
-            "Fruit_hp_01": 5,
-            "Fruit_attack_01": 5,
-            "Fruit__defense_01": 5,
-            "Cake": 50
+            "Wood": 1000,
+            "Stone": 1000,
+            "RepairKit": 25,
+            "Cloth": 200,
+            "Leather": 150,
+            "IronIngot": 100,
+            "CopperIngot": 100,
+            "MachineParts": 50,
+            "ElectronicCircuit": 25
         },
-        "description": "Resources to support Pal breeding and farming setups. Great for optimizing your Pal production.",
-        "price": 80
+        "description": "Construction materials for building and upgrading bases, plus parts for crafting.",
+        "price": 350,
+        "category": "building",
+        "level_requirement": 10
     },
-    "armory_kit": {
+    "pal_management": {
         "items": {
-            "ExplosiveBullet": 100,
+            "PalSphere": 50,
+            "PalSphere_Mega": 25,
+            "PalSphere_Giga": 15,
+            "PalSphere_Tera": 10,
+            "Cake": 25,
+            "PalUpgradeStone": 50,
+            "PalUpgradeStone2": 25,
+            "PalUpgradeStone3": 10
+        },
+        "description": "Pal capture and enhancement items for serious trainers and breeders.",
+        "price": 500,
+        "category": "pals",
+        "level_requirement": 25
+    },
+    "farming_supplies": {
+        "items": {
+            "BerrySeeds": 100,
+            "TomatoSeeds": 75,
+            "WheatSeeds": 75,
+            "LettuceSeeds": 50,
+            "PotatoSeeds": 50,
+            "CarrotSeeds": 50,
+            "OnionSeeds": 50,
+            "GrilledMeat": 100,
+            "Salad": 75,
+            "Pizza": 50,
+            "Cake": 25
+        },
+        "description": "Seeds and prepared foods for sustainable farming and hunger management.",
+        "price": 200,
+        "category": "farming",
+        "level_requirement": 5
+    },
+    "exploration_gear": {
+        "items": {
+            "GrapplingGun": 1,
+            "GrapplingGun3": 1,
+            "Glider_Super": 1,
+            "Torch": 10,
+            "Lantern": 5,
+            "EnergyDrink": 25,
+            "Potion": 15,
+            "Potion_High": 8,
+            "Medicines": 30
+        },
+        "description": "Mobility tools and supplies for long exploration trips and difficult terrain navigation.",
+        "price": 400,
+        "category": "exploration",
+        "level_requirement": 30
+    },
+    "elite_armory": {
+        "items": {
+            "ExplosiveBullet": 150,
             "LaserBullet": 200,
             "MissileBullet": 100,
-            "GatlingBullet": 200,
-            "EnergyLauncherBullet": 50,
-            "LaserGatlingBullet": 50
+            "GatlingBullet": 250,
+            "AssaultRifle_Default5": 1,
+            "HandGun_Default_5": 1,
+            "WeakerBow_5": 1,
+            "RecurveBow": 1,
+            "Arrow": 300,
+            "Arrow_Fire": 150,
+            "Arrow_Poison": 150
         },
-        "description": "Combat-ready supplies for fights and expeditions. Best for PvE and PvP preparation.",
-        "price": 150
+        "description": "High-tier weapons and specialized ammunition for end-game content and PvP.",
+        "price": 600,
+        "category": "combat",
+        "level_requirement": 40
     },
-    "cosmetic_kit": {
+    "accessory_collection": {
         "items": {
-            "Blueprint_Head001_1": 1,
-            "Blueprint_Head002_1": 1,
-            "Blueprint_Head003_1": 1,
-            "Blueprint_Head004_1": 1,
-            "Blueprint_Head006_1": 1
+            "Accessory_HP_2": 1,
+            "Accessory_AT_2": 1,
+            "Accessory_defense_2": 1,
+            "Accessory_WorkSpeed_2": 1,
+            "Accessory_HeatResist_2": 1,
+            "Accessory_CoolResist_2": 1,
+            "Accessory_MaxWeightUp_02": 1
         },
-        "description": "Fun and decorative items for customization. Purely visual",
-        "price": 500
+        "description": "High-quality accessories to boost character stats and resistances.",
+        "price": 450,
+        "category": "equipment",
+        "level_requirement": 35
     },
-    "cosmetic_kit2": {
+    "ancient_technology": {
         "items": {
-            "Head009": 1,
-            "Head010": 1,
-            "Head011": 1,
-            "Head012": 1,
-            "Head013": 1,
-            "Head015": 1
+            "AncientParts2": 50,
+            "AncientParts3": 25,
+            "AncientTechnologyBook_G1": 5,
+            "AncientTechnologyBook_G2": 3,
+            "AncientTechnologyBook_G3": 1,
+            "TechnologyBook_G1": 10,
+            "TechnologyBook_G2": 5,
+            "TechnologyBook_G3": 2
         },
-        "description": "Fun and decorative items for customization. Purely visual",
-        "price": 500
-    },
-    "palsoul_bundle": {
-        "items": {
-            "PalUpgradeStone": 100,
-            "PalUpgradeStone2": 100,
-            "PalUpgradeStone3": 100
-        },
-        "description": "Palsouls bundle x100 each",
-        "price": 2000
+        "description": "Ancient technology parts and knowledge books for unlocking advanced crafting recipes.",
+        "price": 800,
+        "category": "technology",
+        "level_requirement": 45
     }
 }

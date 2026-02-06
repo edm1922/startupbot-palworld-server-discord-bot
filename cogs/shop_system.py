@@ -225,13 +225,11 @@ class PurchaseConfirmView(View):
         
         if rcon_util.is_configured():
             for item_id, amount in kit_data['items'].items():
-                # We expect rcon_util.give_item to return (bool, response_text) now or similar logic
-                # For now let's just use the current give_item and assume detailed logging is in console
-                success = await rcon_util.give_item(self.steam_id, item_id, amount)
+                success, resp = await rcon_util.give_item(self.steam_id, item_id, amount)
                 if success:
                     items_report.append(f"✅ {amount}x **{item_id}**")
                 else:
-                    items_report.append(f"❌ {amount}x **{item_id}** (Server rejected)")
+                    items_report.append(f"❌ {amount}x **{item_id}** ({resp})")
                     all_success = False
         
         # 4. Final Response

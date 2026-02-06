@@ -13,12 +13,23 @@ class KitManagement(commands.Cog):
         admin_id = config.get('admin_user_id', 0)
         return interaction.user.id == admin_id or (hasattr(interaction.user, 'guild_permissions') and interaction.user.guild_permissions.administrator)
 
-    @nextcord.slash_command(name="kit")
+    @nextcord.slash_command(
+        name="kit", 
+        description="Kit commands",
+        default_member_permissions=nextcord.Permissions(administrator=True)
+    )
     async def kit_group(self, interaction: nextcord.Interaction):
-        """Parent command for kit management"""
         pass
 
-    @kit_group.subcommand(name="edit", description="Change a kit's description or price")
+    @nextcord.slash_command(
+        name="kit_admin", 
+        description="Admin commands for Kit Management",
+        default_member_permissions=nextcord.Permissions(administrator=True)
+    )
+    async def kit_admin_group(self, interaction: nextcord.Interaction):
+        pass
+
+    @kit_admin_group.subcommand(name="edit", description="Change a kit's description or price")
     async def edit_preset(
         self,
         interaction: nextcord.Interaction,
@@ -40,7 +51,7 @@ class KitManagement(commands.Cog):
         choices = [k for k in kit_system.get_all_kit_names() if current.lower() in k.lower()]
         await interaction.response.send_autocomplete(choices[:25])
 
-    @kit_group.subcommand(name="add_item", description="Add an item to a kit")
+    @kit_admin_group.subcommand(name="add_item", description="Add an item to a kit")
     async def add_item_to_kit(
         self,
         interaction: nextcord.Interaction,
@@ -85,7 +96,7 @@ class KitManagement(commands.Cog):
         choices = [k for k in kit_system.get_all_kit_names() if current.lower() in k.lower()]
         await interaction.response.send_autocomplete(choices[:25])
 
-    @kit_group.subcommand(name="delete", description="Permanently delete a kit")
+    @kit_admin_group.subcommand(name="delete", description="Permanently delete a kit")
     async def delete_kit(self, interaction: nextcord.Interaction, kit_name: str):
         if not self.is_admin(interaction):
             await interaction.response.send_message("❌ Permission denied.", ephemeral=True)
@@ -100,7 +111,7 @@ class KitManagement(commands.Cog):
         choices = [k for k in kit_system.get_all_kit_names() if current.lower() in k.lower()]
         await interaction.response.send_autocomplete(choices[:25])
 
-    @kit_group.subcommand(name="give", description="Send a kit to a player via RCON")
+    @kit_admin_group.subcommand(name="give", description="Send a kit to a player via RCON")
     async def give_kit(
         self,
         interaction: nextcord.Interaction,
@@ -129,11 +140,13 @@ class KitManagement(commands.Cog):
         results = []
         success_count = 0
         for item_id, amt in kit['items'].items():
-            if await rcon_util.give_item(stats['steam_id'], item_id, amt):
+            res_bool, res_msg = await rcon_util.give_item(stats['steam_id'], item_id, amt)
+            if res_bool:
                 results.append(f"✅ {amt}x {item_id}")
                 success_count += 1
             else:
-                results.append(f"❌ {amt}x {item_id} (Failed)")
+                errorMessage = res_msg if res_msg else "Timeout/Mod Error"
+                results.append(f"❌ {amt}x {item_id} ({errorMessage})")
                 
         embed = nextcord.Embed(title=f"🎁 Kit '{kit_name}' Sent", description="\n".join(results), color=0x00FF00 if success_count == len(kit['items']) else 0xFFA500)
         await interaction.followup.send(embed=embed)

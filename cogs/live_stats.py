@@ -5,6 +5,7 @@ from typing import Optional
 from utils.database import db
 from utils.config_manager import config
 from utils.rest_api import rest_api
+from utils.server_utils import get_server_state, ServerState
 from cogs.rank_system import rank_system
 
 class LiveStatsDisplay:
@@ -45,13 +46,27 @@ class LiveStatsDisplay:
                 current_players = player_data.get('players', [])
                 player_count = len(current_players)
         
-        # Dynamic color based on activity
-        if player_count > 0:
-            color = 0x00FF00  # Green - Players online
-        elif len(leaderboard) > 0:
-            color = 0xFFFF00  # Yellow - No one online but server has history
+        # Get current server state
+        server_state = get_server_state()
+        
+        # Map server state to status text and color
+        state_mapping = {
+            ServerState.OFFLINE: ("OFFLINE", 0xFF0000),
+            ServerState.STARTING: ("STARTING", 0xFFFF00),
+            ServerState.ONLINE: ("ONLINE", 0x00FF00),
+            ServerState.STOPPING: ("STOPPING", 0xFF8800)
+        }
+        
+        status_text, base_color = state_mapping.get(server_state, ("UNKNOWN", 0x808080))
+        
+        # Override color based on player activity if online
+        if server_state == ServerState.ONLINE:
+            if player_count > 0:
+                color = 0x00FF00  # Green - Players online
+            else:
+                color = 0xFFFF00  # Yellow - Online but no players
         else:
-            color = 0xFF6B6B  # Red - Low activity
+            color = base_color
         
         # Total players count for header
         total_players_registered = await db.get_total_players_count()
@@ -60,7 +75,7 @@ class LiveStatsDisplay:
         embed = nextcord.Embed(
             title="📊 ═══ SERVER LIVE DASHBOARD ═══",
             description=(
-                f"```ansi\n\u001b[1;36m⚡ Status: {'ONLINE' if player_count > 0 or rest_api.is_configured() else 'OFFLINE'}\u001b[0m\n"
+                f"```ansi\n\u001b[1;36m⚡ Status: {status_text}\u001b[0m\n"
                 f"\u001b[1;32m👥 Population: {player_count} Online • {total_players_registered} Registered\u001b[0m\n```"
             ),
             color=color,
