@@ -4,14 +4,15 @@ A Discord bot for managing Palworld Dedicated Servers. Features include server m
 
 ## Core Features
 
-- **Gambling System**: Play Casino games like Roulette and Blackjack to win PALDOGS and items.
-- **Giveaway System**: Create giveaways for Kits or Pals. Winners can claim rewards when online.
+- **Lucky Wheel (Gambling)**: 🎰 Spin for guaranteed wins including Mysterious Pals and items. Features real-time **Public Activity Logs**.
+- **Mystery Chest Room**: ✨ Explore and find Basic, Rare, Epic, or Legendary chests. Every opening is logged publicly in the "Recent Discoveries" feed.
+- **Premium Skin Shop**: 🎨 Integrated skin system with an **Auto-Installer for Pals**. Manage and purchase custom `.pak` skins with PALDOGS.
 - **Economy & Ranks**: Earn PALDOGS currency and progress through ranks (Trainer, Gym Leader, Champion).
+- **Giveaway System**: Create giveaways for Kits or Pals. Winners can claim rewards when online.
 - **Live Stats**: Automatic updates for server status, player counts, and system performance.
+- **Smart Auto-Restart**: Configurable restart intervals with countdown announcements and a strict toggle system.
 - **Server Controls**: Manage the server (Start, Restart, Shutdown) directly from Discord.
 - **Cross-Chat Relay**: Bi-directional chat between Discord and Palworld.
-- **Pal & Kit Management**: Import/Export Pal data and manage custom item kits.
-- **Configuration Hub**: Easy setup using `/config` and `/setup_channels`.
 
 ## Command Reference
 
@@ -19,28 +20,37 @@ A Discord bot for managing Palworld Dedicated Servers. Features include server m
 | Command | Description |
 | :--- | :--- |
 | `/palhelp` | Show all available commands |
-| `/profile` | View stats, rank, and balance |
-| `/gamble` | Access Casino games (Roulette, Blackjack) |
-| `/shop` | Access the PALDOGS Exchange shop |
-| `/balance` | Check PALDOGS balance |
-| `/link` | Link Discord to SteamID |
-| `/players` | View online players |
+| `/link` | Link Discord to SteamID (**Required for rewards**) |
+| `/profile` | View stats, rank, level, and active announcer |
 | `/inventory` | View and claim your won items |
-| `/serverinfo` | Show server technical info |
+| `/balance` | Check PALDOGS and EXP balance |
+| `/give_paldogs` | Transfer PALDOGS to another player |
+| `/skinshop` | Browse and buy premium Pal skins |
+| `/kit view` | Browse available item kits |
+| `/players` | View currently online players |
+| `/nextrestart` | Time until next scheduled auto-restart |
 
 ### Admin Commands
 | Command | Description |
 | :--- | :--- |
-| `/config` | Open the configuration hub |
-| `/setup_channels` | Configure bot channels |
+| `/config` | Open the main configuration dashboard |
+| `/setup_channels` | Configure bot-specific channels |
 | `/server_controls` | Open the server control panel |
-| `/gamble setup_roulette` | Initialize the Roulette table |
-| `/gamble setup_blackjack` | Initialize the Blackjack UI |
-| `/giveaway create` | Create a new giveaway |
-| `/kit` | Manage item kits |
-| `/pal_cage` | Manage Pal data |
-| `/paldog_admin` | Manage economy and progression |
+| `/chest setup_ui` | Spawn the persistent Mystery Chest Room |
+| `/gamble_admin` | Setup/Manage the Lucky Wheel and rewards |
+| `/skin_admin` | Sync, add, and update skins in the shop |
+| `/kit_admin` | Create, edit, and manually give kits to players |
+| `/paldog_admin` | Manage economy and grant manual rewards |
+| `/giveaway_admin`| Create and manage server giveaways |
+| `/pal_admin` | Manage custom Pal data and bulk imports |
 | `/saveworld` | Manually trigger world save |
+
+## Structure & Organization
+
+- **`cogs/`**: Modularized features (Gambling, Skins, Chets, Rank System, etc).
+- **`data/`**: Configuration, databases, and assets.
+  - **`palskins/`**: Centralized home for skin installer scripts and `.pak` templates.
+- **`utils/`**: Core utilities for RCON, REST API, Database, and Server communication.
 
 ## Setup Instructions
 
@@ -61,7 +71,7 @@ A Discord bot for managing Palworld Dedicated Servers. Features include server m
    ```powershell
    python main.py
    ```
-   Or use the provided batch files: `start_bot.bat`, `start_background_bot.bat`.
+   Or use the provided batch files: `start_bot.bat`, `restart_bot.bat`.
 
 ## Documentation
 Additional guides are in the `docs/` folder:
